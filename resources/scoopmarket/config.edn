@@ -1,0 +1,12 @@
+{:duct.core/project-ns  scoopmarket
+ :duct.core/environment :production
+ :duct.module/logging {}
+ :duct.module.web/site {}
+ :duct.middleware.web/defaults
+ {:static {:resources ["scoopmarket/public"]}}
+ :duct.module/cljs {:main scoopmarket.client}
+
+ :duct.module/ataraxy
+ {[:get] [:index]}
+
+ :scoopmarket.handler/index {}}

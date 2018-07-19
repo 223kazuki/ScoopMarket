@@ -1,0 +1,22 @@
+(ns scoopmarket.client.subs
+  (:require [re-frame.core :as re-frame]))
+
+(re-frame/reg-sub
+ ::active-panel
+ (fn [db]
+   (:active-panel db)))
+
+(re-frame/reg-sub
+ ::sidebar-opened
+ (fn [db]
+   (:sidebar-opened db)))
+
+(re-frame/reg-sub
+ ::loading?
+ (fn [db]
+   (:loading? db)))
+
+(re-frame/reg-sub
+ ::form
+ (fn [db]
+   (:form db)))
