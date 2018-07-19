@@ -1,0 +1,15 @@
+{
+  "name": "ScoopMarket",
+  "version": "0.1.0-SNAPSHOT",
+  "description": "A market place for scoops.",
+  "main": "truffle.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {},
+  "keywords": [],
+  "author": "Kazuki Tsutsumi",
+  "dependencies": {
+    "openzeppelin-solidity": "1.11.0"
+  }
+}

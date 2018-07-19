@@ -3,7 +3,7 @@
  :duct.module/logging {}
  :duct.module.web/site {}
  :duct.middleware.web/defaults
- {:static {:resources ["scoopmarket/public"]}}
+ {:static {:resources ["scoopmarket/public" "contracts"]}}
  :duct.module/cljs {:main scoopmarket.client}
 
  :duct.module/ataraxy

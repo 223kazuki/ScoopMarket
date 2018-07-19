@@ -17,7 +17,7 @@
  (fn [_ _]
    {:db db/default-db
     :http-xhrio {:method :get
-                 :uri (gstring/format "./build/contracts/%s.json"
+                 :uri (gstring/format "%s.json"
                                       (get-in db/default-db [:contract :name]))
                  :timeout 6000
                  :response-format (ajax/json-response-format {:keywords? true})

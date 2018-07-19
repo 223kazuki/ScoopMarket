@@ -7,7 +7,7 @@
    :loading? true
    :web3 (aget js/window "web3")
    :provides-web3? (aget js/window "web3")
-   :contract {:name "ScoopMarket"
+   :contract {:name "Scoop"
               :abi nil
               :instance nil
               :address nil}})
