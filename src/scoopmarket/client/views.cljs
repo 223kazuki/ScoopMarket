@@ -15,7 +15,18 @@
      [sa/Dimmer {:active true :page true}
       [sa/Loader "Loading..."]]]))
 
-(defn mypage-panel [] [:div "This is my page."])
+(defn mypage-panel []
+  (reagent/create-class
+   {:component-did-mount
+    #(re-frame/dispatch [::events/fetch-image])
+
+    :reagent-render
+    (fn []
+      (let [image-url (re-frame/subscribe [::subs/image-url])]
+        [:div
+         [:div "This is my page."]
+         [:img {:src @image-url}]]))}))
+
 (defn market-panel [] [:div "This is market."])
 (defn none-panel   [] [:div])
 

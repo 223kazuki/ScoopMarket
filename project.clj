@@ -12,6 +12,7 @@
                  [re-frame "0.10.5"]
                  [cljsjs/react-transition-group "2.3.0-0"]
                  [cljsjs/moment "2.22.0-0"]
+                 [cljsjs/ipfs-api "18.1.1-0"]
                  [soda-ash "0.78.2" :exclusions [[cljsjs/react]]]
                  [day8.re-frame/http-fx "0.1.6"]
                  [district0x.re-frame/web3-fx "1.0.5" :exclusions [[cljs-web3]]]

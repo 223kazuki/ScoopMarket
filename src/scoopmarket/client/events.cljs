@@ -10,7 +10,8 @@
             [cljs-web3.eth :as web3-eth]
             [cljsjs.moment]
             [goog.string :as gstring]
-            [goog.string.format]))
+            [goog.string.format]
+            [cljsjs.ipfs]))
 
 (re-frame/reg-event-fx
  ::initialize-db
@@ -55,3 +56,20 @@
    (-> db
        (assoc :message {:status :error :text (str result)})
        (assoc :loading? false))))
+
+(re-frame/reg-event-db
+ ::fetch-image
+ (fn [db [_ hash]]
+   (let [ipfs (js/IpfsApi "/ip4/127.0.0.1/tcp/5001")]
+     (.cat ipfs (or hash
+                    "QmSoPpGPFr3gz9rfwfwJuLahjTTmhdFJtKNvHYS58s8pqr")
+           (fn [_ bytes]
+             (let [blob (js/Blob. (clj->js [bytes]) (clj->js {:type "image/jpeg"}))
+                   image-url (js/window.webkitURL.createObjectURL (clj->js blob))]
+               (re-frame/dispatch [::fetch-image-success image-url])))))
+   db))
+
+(re-frame/reg-event-db
+ ::fetch-image-success
+ (fn [db [_ image-url]]
+   (assoc db :image-url image-url)))

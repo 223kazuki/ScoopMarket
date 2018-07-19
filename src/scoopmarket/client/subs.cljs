@@ -20,3 +20,8 @@
  ::form
  (fn [db]
    (:form db)))
+
+(re-frame/reg-sub
+ ::image-url
+ (fn [db]
+   (:image-url db)))
