@@ -11,7 +11,7 @@
             [cljsjs.moment]
             [goog.string :as gstring]
             [goog.string.format]
-            [cljsjs.ipfs]))
+            [cljsjs.buffer]))
 
 (re-frame/reg-event-fx
  ::initialize-db
@@ -26,22 +26,39 @@
                  :on-failure [::api-failure]}}))
 
 (re-frame/reg-event-db
- ::toggle-sidebar
- (fn [db _]
-   (update-in db [:sidebar-opened] not)))
-
-(re-frame/reg-event-db
  ::abi-loaded
  (fn [db [_ {:keys [abi networks]}]]
    (let [web3 (:web3 db)
-         address (get-in networks [(keyword (str 0)) :address])
+         ;; TODO: Specify network ID.
+         address (-> networks first val :address)
          instance (web3-eth/contract-at web3 abi address)]
-     (js/console.log instance)
+     (re-frame/dispatch [::fetch-my-address])
      (-> db
          (assoc-in [:contract :abi] abi)
          (assoc-in [:contract :address] address)
          (assoc-in [:contract :instance] instance)
+         (assoc :abi-loaded true)
          (dissoc :loading?)))))
+
+(re-frame/reg-event-fx
+ ::fetch-my-address
+ (fn [{:keys [:db]} _]
+   {:web3/call {:web3 (:web3 db)
+                :fns [{:fn cljs-web3.eth/accounts
+                       :args []
+                       :on-success [::fetch-my-address-success]
+                       :on-error [::api-failure]}]}}))
+
+(re-frame/reg-event-db
+ ::fetch-my-address-success
+ (fn [db [_ [address]]]
+   (-> db
+       (assoc :my-address address))))
+
+(re-frame/reg-event-db
+ ::toggle-sidebar
+ (fn [db _]
+   (update-in db [:sidebar-opened] not)))
 
 (re-frame/reg-event-db
  ::set-active-panel
@@ -60,16 +77,75 @@
 (re-frame/reg-event-db
  ::fetch-image
  (fn [db [_ hash]]
-   (let [ipfs (js/IpfsApi "/ip4/127.0.0.1/tcp/5001")]
-     (.cat ipfs (or hash
-                    "QmSoPpGPFr3gz9rfwfwJuLahjTTmhdFJtKNvHYS58s8pqr")
-           (fn [_ bytes]
-             (let [blob (js/Blob. (clj->js [bytes]) (clj->js {:type "image/jpeg"}))
-                   image-url (js/window.webkitURL.createObjectURL (clj->js blob))]
-               (re-frame/dispatch [::fetch-image-success image-url])))))
+   (.cat (:ipfs db) (or hash
+                        ;; TODO: not found image
+                        "QmSoPpGPFr3gz9rfwfwJuLahjTTmhdFJtKNvHYS58s8pqr")
+         (fn [_ bytes]
+           (let [blob (js/Blob. (clj->js [bytes]) (clj->js {:type "image/jpeg"}))
+                 image-url (js/window.webkitURL.createObjectURL (clj->js blob))]
+             (re-frame/dispatch [::fetch-image-success image-url]))))
    db))
 
 (re-frame/reg-event-db
  ::fetch-image-success
  (fn [db [_ image-url]]
    (assoc db :image-url image-url)))
+
+(re-frame/reg-event-fx
+ ::fetch-my-scoops
+ (fn [{:keys [db]} [_ _]]
+   {:web3/call {:web3 (:web3 db)
+                :fns [{:instance (get-in db [:contract :instance])
+                       :fn :scoops-of
+                       :args [""]
+                       :on-success [::fetch-my-scoops-success]
+                       :on-error [::api-failure]}]}}))
+
+(re-frame/reg-event-db
+ ::fetch-my-scoops-success
+ (fn [db [_ result]]
+   db))
+
+(re-frame/reg-event-db
+ ::upload-image
+ (fn [db [_ reader]]
+   (let [buffer (js/buffer.Buffer.from (aget reader "result"))]
+     (.then (.add (:ipfs db) buffer)
+            (fn [response]
+              (re-frame/dispatch [::mint (aget (first response) "hash")]))))
+   db))
+
+(re-frame/reg-event-fx
+ ::mint
+ (fn [{:keys [db]} [_ hash]]
+   {:web3/call {:web3 (:web3 db)
+                :fns [{:instance (get-in db [:contract :instance])
+                       :fn :mint
+                       :args [hash]
+                       :tx-opts {:gas 4700000
+                                 :gas-price 100000000000}
+                       :on-tx-hash [::tx-hash]
+                       :on-tx-hash-error [::api-failure]
+                       :on-tx-success [::tx-success]
+                       :on-tx-error [::api-failure]
+                       :on-tx-receipt [::tx-receipt]}]}}))
+
+(re-frame/reg-event-db
+ ::tx-hash
+ (fn [db [_ result]]
+   (js/console.log (pr-str result))
+   (assoc db :message {:status :info :text "Sending transaction..."} :loading? true)))
+
+(re-frame/reg-event-db
+ ::tx-success
+ (fn [db [_ result]]
+   (js/console.log (pr-str result))
+   (-> db
+       (assoc :message {:status :info :text "Transation was written in blockchain successfully." :transaction-result result})
+       (dissoc :loading? :form))))
+
+(re-frame/reg-event-db
+ ::tx-receipt
+ (fn [db [_ result]]
+   (js/console.log (pr-str result))
+   (assoc db :message {:status :info :text {:status "info" :text "Transaction was sent."}})))

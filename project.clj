@@ -18,7 +18,8 @@
                  [district0x.re-frame/web3-fx "1.0.5" :exclusions [[cljs-web3]]]
                  [cljs-web3 "0.19.0-0-11"]
                  [kibu/pushy "0.3.8"]
-                 [bidi "2.1.3"]]
+                 [bidi "2.1.3"]
+                 [cljsjs/buffer "5.1.0-1"]]
   :plugins [[duct/lein-duct "0.10.6"]]
   :main ^:skip-aot scoopmarket.main
   :uberjar-name  "scoopmarket-standalone.jar"

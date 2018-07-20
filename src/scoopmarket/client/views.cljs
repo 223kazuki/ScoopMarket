@@ -15,16 +15,35 @@
      [sa/Dimmer {:active true :page true}
       [sa/Loader "Loading..."]]]))
 
+(defn image-uploader [{:keys [:config :upload-handler]}]
+  (let [uuid (or (:uuid config) (random-uuid))]
+    [:span
+     [sa/Label {:htmlFor uuid :as "label" :class "button"}
+      [sa/Icon {:name "upload"}] "Upload"]
+     [:input {:id uuid :type "file" :style {:display "none"}
+              :on-change upload-handler}]]))
+
 (defn mypage-panel []
   (reagent/create-class
    {:component-did-mount
-    #(re-frame/dispatch [::events/fetch-image])
+    #(let [my-address (re-frame/subscribe [::subs/my-address])]
+       (re-frame/dispatch [::events/fetch-my-scoops @my-address]))
 
     :reagent-render
     (fn []
       (let [image-url (re-frame/subscribe [::subs/image-url])]
         [:div
          [:div "This is my page."]
+         (let [uuid (random-uuid)]
+           [image-uploader {:config {:uuid uuid}
+                            :upload-handler (fn []
+                                              (let [el (.getElementById js/document uuid)
+                                                    file (aget (.-files el) 0)
+                                                    reader (js/FileReader.)]
+                                                (set! (.-onloadend reader)
+                                                      #(re-frame/dispatch [::events/upload-image reader]))
+                                                (.readAsArrayBuffer reader file)))}])
+
          [:img {:src @image-url}]]))}))
 
 (defn market-panel [] [:div "This is market."])
@@ -42,14 +61,17 @@
   (reagent/adapt-react-class js/ReactTransitionGroup.CSSTransition))
 
 (defn main-container [mobile?]
-  (let [active-panel (re-frame/subscribe [::subs/active-panel])]
+  (let [abi-loaded (re-frame/subscribe [::subs/abi-loaded])
+        my-address (re-frame/subscribe [::subs/my-address])
+        active-panel (re-frame/subscribe [::subs/active-panel])]
     [sa/Container {:className "mainContainer" :style {:marginTop "7em"}}
-     [transition-group
-      [css-transition {:key @active-panel
-                       :classNames "pageChange"
-                       :timeout 500
-                       :className "transition"}
-       [(panels @active-panel) mobile?]]]]))
+     (when (and @abi-loaded @my-address)
+       [transition-group
+        [css-transition {:key @active-panel
+                         :classNames "pageChange"
+                         :timeout 500
+                         :className "transition"}
+         [(panels @active-panel) mobile?]]])]))
 
 (defn main-panel []
   (let [sidebar-opened (re-frame/subscribe [::subs/sidebar-opened])]

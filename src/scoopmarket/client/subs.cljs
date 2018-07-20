@@ -12,6 +12,16 @@
    (:sidebar-opened db)))
 
 (re-frame/reg-sub
+ ::abi-loaded
+ (fn [db]
+   (:abi-loaded db)))
+
+(re-frame/reg-sub
+ ::my-address
+ (fn [db]
+   (:my-address db)))
+
+(re-frame/reg-sub
  ::loading?
  (fn [db]
    (:loading? db)))
