@@ -15,13 +15,24 @@
      [sa/Dimmer {:active true :page true}
       [sa/Loader "Loading..."]]]))
 
-(defn image-uploader [{:keys [:config :upload-handler]}]
+(defn scoop-uploader [{:keys [:config :upload-handler]}]
   (let [uuid (or (:uuid config) (random-uuid))]
     [:span
      [sa/Label {:htmlFor uuid :as "label" :class "button"}
       [sa/Icon {:name "upload"}] "Upload"]
      [:input {:id uuid :type "file" :style {:display "none"}
               :on-change upload-handler}]]))
+
+(defn scoop-panel [{:keys [:config :on-click-handler]}]
+  (let [{:keys [:id :image-url]} (:scoop config)]
+    (reagent/create-class
+     {:component-did-mount
+      #(when (nil? image-url)
+         (re-frame/dispatch [::events/fetch-scoop id]))
+
+      :reagent-render
+      (fn []
+        [:img {:style {:width "100%"} :src image-url}])})))
 
 (defn mypage-panel []
   (reagent/create-class
@@ -31,11 +42,13 @@
 
     :reagent-render
     (fn []
-      (let [image-url (re-frame/subscribe [::subs/image-url])]
+      (let [image-url (re-frame/subscribe [::subs/image-url])
+            scoops (re-frame/subscribe [::subs/scoops])]
         [:div
-         [:div "This is my page."]
+         "This is my page."
+         [sa/Divider]
          (let [uuid (random-uuid)]
-           [image-uploader {:config {:uuid uuid}
+           [scoop-uploader {:config {:uuid uuid}
                             :upload-handler (fn []
                                               (let [el (.getElementById js/document uuid)
                                                     file (aget (.-files el) 0)
@@ -43,7 +56,12 @@
                                                 (set! (.-onloadend reader)
                                                       #(re-frame/dispatch [::events/upload-image reader]))
                                                 (.readAsArrayBuffer reader file)))}])
-
+         [sa/Divider]
+         [sa/Grid {:doubling true :columns 3}
+          (for [[_ scoop] @scoops]
+            ^{:key scoop}
+            [sa/GridColumn
+             [scoop-panel {:config {:scoop scoop}}]])]
          [:img {:src @image-url}]]))}))
 
 (defn market-panel [] [:div "This is market."])

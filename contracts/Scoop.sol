@@ -28,7 +28,8 @@ contract Scoop is ERC721Token, Ownable {
     function scoopsOf(address _address) external view returns (uint[]) {
         return ownedTokens[_address];
     }
-    function scoaopsOf(address _address) external view returns (uint[]) {
-        return ownedTokens[_address];
+
+    function scoop(uint _tokenID) external view returns (uint, string) {
+        return (_tokenID, tokenURI(_tokenID));
     }
 }

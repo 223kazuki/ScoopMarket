@@ -74,37 +74,53 @@
        (assoc :message {:status :error :text (str result)})
        (assoc :loading? false))))
 
-(re-frame/reg-event-db
- ::fetch-image
- (fn [db [_ hash]]
-   (.cat (:ipfs db) (or hash
-                        ;; TODO: not found image
-                        "QmSoPpGPFr3gz9rfwfwJuLahjTTmhdFJtKNvHYS58s8pqr")
-         (fn [_ bytes]
-           (let [blob (js/Blob. (clj->js [bytes]) (clj->js {:type "image/jpeg"}))
-                 image-url (js/window.webkitURL.createObjectURL (clj->js blob))]
-             (re-frame/dispatch [::fetch-image-success image-url]))))
-   db))
-
-(re-frame/reg-event-db
- ::fetch-image-success
- (fn [db [_ image-url]]
-   (assoc db :image-url image-url)))
-
 (re-frame/reg-event-fx
  ::fetch-my-scoops
- (fn [{:keys [db]} [_ _]]
+ (fn [{:keys [db]} [_ address]]
    {:web3/call {:web3 (:web3 db)
                 :fns [{:instance (get-in db [:contract :instance])
                        :fn :scoops-of
-                       :args [""]
+                       :args [address]
                        :on-success [::fetch-my-scoops-success]
                        :on-error [::api-failure]}]}}))
 
 (re-frame/reg-event-db
  ::fetch-my-scoops-success
- (fn [db [_ result]]
-   db))
+ (fn [db [_ scoops]]
+   (assoc db :scoops (->> scoops
+                          (map #(let [id (.toNumber %)]
+                                  (hash-map (keyword (str id)) {:id id})))
+                          (into {})))))
+
+(re-frame/reg-event-fx
+ ::fetch-scoop
+ (fn [{:keys [db]} [_ id]]
+   {:web3/call {:web3 (:web3 db)
+                :fns [{:instance (get-in db [:contract :instance])
+                       :fn :scoop
+                       :args [id]
+                       :on-success [::fetch-scoop-success]
+                       :on-error [::api-failure]}]}}))
+
+(re-frame/reg-event-db
+ ::fetch-scoop-success
+ (fn [db [_ scoop]]
+   (let [[id hash] scoop
+         id (.toNumber id)]
+     (.cat (:ipfs db) (or hash
+                          ;; TODO: not found image
+                          "QmSoPpGPFr3gz9rfwfwJuLahjTTmhdFJtKNvHYS58s8pqr")
+           (fn [_ bytes]
+             ;; TODO: Not only jpeg.
+             (let [blob (js/Blob. (clj->js [bytes]) (clj->js {:type "image/jpeg"}))
+                   image-url (js/window.webkitURL.createObjectURL (clj->js blob))]
+               (re-frame/dispatch [::fetch-image-success id image-url]))))
+     db)))
+
+(re-frame/reg-event-db
+ ::fetch-image-success
+ (fn [db [_ id image-url]]
+   (assoc-in db [:scoops (keyword (str id)) :image-url] image-url)))
 
 (re-frame/reg-event-db
  ::upload-image
@@ -123,7 +139,9 @@
                        :fn :mint
                        :args [hash]
                        :tx-opts {:gas 4700000
-                                 :gas-price 100000000000}
+                                 :gas-price 100000000000
+                                 ;; TODO: Specify value.
+                                 :value 10000000000000000}
                        :on-tx-hash [::tx-hash]
                        :on-tx-hash-error [::api-failure]
                        :on-tx-success [::tx-success]

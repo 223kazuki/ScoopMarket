@@ -32,6 +32,11 @@
    (:form db)))
 
 (re-frame/reg-sub
+ ::scoops
+ (fn [db]
+   (:scoops db)))
+
+(re-frame/reg-sub
  ::image-url
  (fn [db]
    (:image-url db)))
