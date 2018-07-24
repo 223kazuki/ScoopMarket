@@ -113,7 +113,7 @@
            (fn [_ bytes]
              ;; TODO: Not only jpeg.
              (let [blob (js/Blob. (clj->js [bytes]) (clj->js {:type "image/jpeg"}))
-                   image-url (js/window.webkitURL.createObjectURL (clj->js blob))]
+                   image-url (js/window.URL.createObjectURL (clj->js blob))]
                (re-frame/dispatch [::fetch-image-success id image-url]))))
      db)))
 

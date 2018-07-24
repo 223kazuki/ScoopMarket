@@ -16,23 +16,41 @@
       [sa/Loader "Loading..."]]]))
 
 (defn scoop-uploader [{:keys [:config :upload-handler]}]
-  (let [uuid (or (:uuid config) (random-uuid))]
+  (let [uuid (random-uuid)]
     [:span
      [sa/Label {:htmlFor uuid :as "label" :class "button"}
       [sa/Icon {:name "upload"}] "Upload"]
      [:input {:id uuid :type "file" :style {:display "none"}
-              :on-change upload-handler}]]))
+              :on-change (fn []
+                           (let [el (.getElementById js/document uuid)
+                                 file (aget (.-files el) 0)
+                                 reader (js/FileReader.)]
+                             (set! (.-onloadend reader)
+                                   #(upload-handler reader))
+                             (.readAsArrayBuffer reader file)))}]]))
+
+(defn image-card [{:keys [:config]}]
+  (let [{:keys [:image-url]} (:scoop config)]
+    [:div
+     ]))
 
 (defn scoop-panel [{:keys [:config :on-click-handler]}]
-  (let [{:keys [:id :image-url]} (:scoop config)]
+  (let [{:keys [:id :image-url] :as scoop} (:scoop config)]
     (reagent/create-class
      {:component-did-mount
       #(when (nil? image-url)
          (re-frame/dispatch [::events/fetch-scoop id]))
-
       :reagent-render
       (fn []
-        [:img {:style {:width "100%"} :src image-url}])})))
+        [sa/Card {:style {:width "100%"}}
+         [sa/Modal {:close-icon true
+                    :size "large"
+                    :trigger (js/React.createElement
+                              "img" (clj->js {:style {:width "100%"} :src image-url}))}
+          [sa/ModalContent
+           [:img {:style {:width "100%"} :src image-url}]]]
+         [sa/CardContent
+          [sa/CardHeader "Image1"]]])})))
 
 (defn mypage-panel []
   (reagent/create-class
@@ -42,27 +60,19 @@
 
     :reagent-render
     (fn []
-      (let [image-url (re-frame/subscribe [::subs/image-url])
-            scoops (re-frame/subscribe [::subs/scoops])]
+      (let [scoops (re-frame/subscribe [::subs/scoops])]
         [:div
          "This is my page."
          [sa/Divider]
-         (let [uuid (random-uuid)]
-           [scoop-uploader {:config {:uuid uuid}
-                            :upload-handler (fn []
-                                              (let [el (.getElementById js/document uuid)
-                                                    file (aget (.-files el) 0)
-                                                    reader (js/FileReader.)]
-                                                (set! (.-onloadend reader)
-                                                      #(re-frame/dispatch [::events/upload-image reader]))
-                                                (.readAsArrayBuffer reader file)))}])
+         [scoop-uploader {:upload-handler
+                          (fn [reader]
+                            (re-frame/dispatch [::events/upload-image reader]))}]
          [sa/Divider]
          [sa/Grid {:doubling true :columns 3}
           (for [[_ scoop] @scoops]
             ^{:key scoop}
             [sa/GridColumn
-             [scoop-panel {:config {:scoop scoop}}]])]
-         [:img {:src @image-url}]]))}))
+             [scoop-panel {:config {:scoop scoop}}]])]]))}))
 
 (defn market-panel [] [:div "This is market."])
 (defn none-panel   [] [:div])
