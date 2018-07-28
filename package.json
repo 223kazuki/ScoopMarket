@@ -10,6 +10,7 @@
   "keywords": [],
   "author": "Kazuki Tsutsumi",
   "dependencies": {
+    "truffle-hdwallet-provider": "0.0.5",
     "openzeppelin-solidity": "1.11.0"
   }
 }
