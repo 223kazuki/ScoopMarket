@@ -88,7 +88,7 @@
  ::fetch-my-scoops-success
  (fn [db [_ scoops]]
    (assoc db :scoops (->> scoops
-                          (map #(let [id (.toNumber %)]
+                          (map #(let [id (first (aget % "c"))]
                                   (hash-map (keyword (str id)) {:id id})))
                           (into {})))))
 
@@ -106,15 +106,16 @@
  ::fetch-scoop-success
  (fn [db [_ scoop]]
    (let [[id hash] scoop
-         id (.toNumber id)]
-     (.cat (:ipfs db) (or hash
-                          ;; TODO: not found image
-                          "QmSoPpGPFr3gz9rfwfwJuLahjTTmhdFJtKNvHYS58s8pqr")
-           (fn [_ bytes]
-             ;; TODO: Not only jpeg.
-             (let [blob (js/Blob. (clj->js [bytes]) (clj->js {:type "image/jpeg"}))
-                   image-url (js/window.URL.createObjectURL (clj->js blob))]
-               (re-frame/dispatch [::fetch-image-success id image-url]))))
+         id (first (aget id "c"))
+         cat (aget (:ipfs db) "cat")]
+     (cat (or hash
+              ;; TODO: not found image
+              "QmSoPpGPFr3gz9rfwfwJuLahjTTmhdFJtKNvHYS58s8pqr")
+          (fn [_ bytes]
+            ;; TODO: Not only jpeg.
+            (let [blob (js/Blob. (clj->js [bytes]) (clj->js {:type "image/jpeg"}))
+                  image-url (js/window.URL.createObjectURL (clj->js blob))]
+              (re-frame/dispatch [::fetch-image-success id image-url]))))
      db)))
 
 (re-frame/reg-event-db
@@ -125,8 +126,9 @@
 (re-frame/reg-event-db
  ::upload-image
  (fn [db [_ reader]]
-   (let [buffer (js/buffer.Buffer.from (aget reader "result"))]
-     (.then (.add (:ipfs db) buffer)
+   (let [buffer (js/buffer.Buffer.from (aget reader "result"))
+         add (aget (:ipfs db) "add")]
+     (.then (add buffer)
             (fn [response]
               (re-frame/dispatch [::mint (aget (first response) "hash")]))))
    db))
