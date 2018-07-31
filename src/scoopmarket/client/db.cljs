@@ -6,9 +6,9 @@
   {:active-panel :none
    :sidebar-opened false
    :loading? true
-
-   :ipfs (js/IpfsApi "/ip4/127.0.0.1/tcp/5001")
-
+   :ipfs (js/IpfsApi (clj->js {:host "ipfs.infura.io"
+                               :port 5001
+                               :protocol "https"}))
    :abi-loaded false
    :web3 (aget js/window "web3")
    :my-address nil
