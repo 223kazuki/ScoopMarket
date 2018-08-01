@@ -13,7 +13,7 @@ module.exports = {
         console.log(provider.addresses)
         return provider;
       },
-      network_id: '*',
+      network_id: 1533140371286,
       gas: 4700000
     },
     development: {

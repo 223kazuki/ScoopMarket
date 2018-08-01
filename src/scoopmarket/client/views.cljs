@@ -29,10 +29,42 @@
                                    #(upload-handler reader))
                              (.readAsArrayBuffer reader file)))}]]))
 
-(defn image-card [{:keys [:config]}]
-  (let [{:keys [:image-url]} (:scoop config)]
-    [:div
-     ]))
+(defn- input-text-handler [el]
+  (let [n (aget (.-target el) "name")
+        v (aget (.-target el) "value")]
+    (re-frame/dispatch [::events/update-form n (fn [_] v)])))
+
+(defn tags [{:keys [:config :on-click-handler]}]
+  (let [{:keys [:id :meta] :as scoop} (:scoop config)]
+    (reagent/create-class
+     {:component-did-mount
+      #()
+
+      :reagent-render
+      (fn []
+        (let [{:keys [:tags]} meta
+              form (re-frame/subscribe [::subs/form])
+              new-tag ((keyword (str "new-tag/" id)) @form)]
+          [sa/Segment
+           [sa/Input {:icon "tags"
+                      :iconPosition "left"
+                      :label (clj->js {:tag true :content "Add Tag"
+                                       :style {:cursor "pointer"}
+                                       :onClick #(when-not (empty? new-tag)
+                                                   (re-frame/dispatch [::events/add-scoop-tag id new-tag]))})
+                      :labelPosition "right"
+                      :placeholder "Enter tags"
+                      :name (str "new-tag/" id)
+                      :value (or new-tag "")
+                      :on-change input-text-handler}]
+           (when-not (empty? tags) [:br])
+           (for [tag tags]
+             ^{:key tag}
+             [sa/Label {:style {:margin-top "3px"}}
+              tag [sa/Icon {:name "delete"
+                            :on-click #(re-frame/dispatch [::events/delete-scoop-tag id tag])}]])
+           [sa/Divider]
+           [sa/Button {:on-click #(re-frame/dispatch [::events/upload-meta id])} "Update"]]))})))
 
 (defn scoop-panel [{:keys [:config :on-click-handler]}]
   (let [{:keys [:id :image-url] :as scoop} (:scoop config)]
@@ -40,6 +72,7 @@
      {:component-did-mount
       #(when (nil? image-url)
          (re-frame/dispatch [::events/fetch-scoop id]))
+
       :reagent-render
       (fn []
         [sa/Card {:style {:width "100%"}}
@@ -50,7 +83,7 @@
           [sa/ModalContent
            [:img {:style {:width "100%"} :src image-url}]]]
          [sa/CardContent
-          [sa/CardHeader "Image1"]]])})))
+          [tags {:config {:scoop scoop}}]]])})))
 
 (defn mypage-panel []
   (reagent/create-class

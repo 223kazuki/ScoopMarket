@@ -8,17 +8,25 @@ import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
 contract Scoop is ERC721Token, Ownable {
     using SafeMath for uint;
 
-    uint internal tokenIDNonce = 0;
+    struct ScoopStruct {
+        uint   timestamp;
+        string imageURI;
+        string metaDataURI;
+    }
+
+    ScoopStruct[] scoops;
+
     uint public mintCost = 10 ** 16 wei;
 
     constructor() public ERC721Token("Scoop", "SCP") {}
 
-    function mint(string _uri) external payable {
+    function mint(string _imageURI) external payable {
         require(msg.value == mintCost);
-        uint tokenID = tokenIDNonce;
-        tokenIDNonce = tokenIDNonce.add(1);
+
+        ScoopStruct memory _scoop = ScoopStruct(block.timestamp, _imageURI, "");
+        uint tokenID = scoops.push(_scoop).sub(1);
+
         super._mint(msg.sender, tokenID);
-        super._setTokenURI(tokenID, _uri);
     }
 
     function setMintCost(uint _mintCost) external onlyOwner {
@@ -29,7 +37,14 @@ contract Scoop is ERC721Token, Ownable {
         return ownedTokens[_address];
     }
 
-    function scoop(uint _tokenID) external view returns (uint, string) {
-        return (_tokenID, tokenURI(_tokenID));
+    function setTokenMetaDataUri(uint256 _tokenID, string _metaDataURI) external {
+        require(exists(_tokenID));
+        ScoopStruct storage scoop = scoops[_tokenID];
+        scoop.metaDataURI = _metaDataURI;
+    }
+
+    function scoop(uint _tokenID) external view returns (uint, uint, string, string) {
+        ScoopStruct memory _scoop = scoops[_tokenID];
+        return (_tokenID, _scoop.timestamp, _scoop.imageURI, _scoop.metaDataURI);
     }
 }
