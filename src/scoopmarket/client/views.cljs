@@ -96,6 +96,7 @@
       (let [scoops (re-frame/subscribe [::subs/scoops])]
         [:div
          "This is my page."
+         [sa/Button {:on-click #(re-frame/dispatch [::events/connect-uport])} "Connect to uPort"]
          [sa/Divider]
          [scoop-uploader {:upload-handler
                           (fn [reader]
