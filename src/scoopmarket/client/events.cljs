@@ -230,18 +230,18 @@
 (re-frame/reg-event-db
  ::connect-uport
  (fn [db [_]]
-   (let [Connect js/window.uportconnect.Connect
-         SimpleSigner js/window.uportconnect.SimpleSigner
+   (let [Connect (aget js/window "uportconnect" "Connect")
+         SimpleSigner (aget js/window "uportconnect" "SimpleSigner")
          uport (Connect. "Kazuki's new app"
                          (clj->js
                           {:clientId "2ongzbaHaEopuxDdxrCvU1XZqWt16oir144"
                            :network "ropsten"
-                           :signer (SimpleSigner "f5dc5848640a565994f9889d9ddda443a2fcf4c3d87aef3a74c54c4bcadc8ebd")}))]
-     (.then
-      (.requestCredentials uport
-                           (clj->js {:requested ["name" "phone" "country"]
-                                     :notifications true}))
-      (fn [credential] (re-frame/dispatch [::connect-uport-success credential])))
+                           :signer (SimpleSigner "f5dc5848640a565994f9889d9ddda443a2fcf4c3d87aef3a74c54c4bcadc8ebd")}))
+         request-credentials (aget uport "")]
+     (.then (.requestCredentials uport
+                                 (clj->js {:requested ["name" "phone" "country"]
+                                           :notifications true}))
+            (fn [credential] (re-frame/dispatch [::connect-uport-success credential])))
      (assoc db
             :uport uport
             :web3 (.getWeb3 uport)))))

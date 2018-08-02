@@ -5,6 +5,8 @@
  :duct.middleware.web/defaults
  {:static {:resources ["scoopmarket/public" "contracts"]}}
  :duct.module/cljs {:main scoopmarket.client}
+ :coop.magnet.duct-module/cljs-externs {:cljs-module #ig/ref :duct.module/cljs
+                                        :externs ["resources/uport-connect.ext.js"]}
 
  :duct.module/ataraxy
  {[:get] [:index]}

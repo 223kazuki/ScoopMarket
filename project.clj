@@ -8,6 +8,7 @@
                  [duct/module.web "0.6.4"]
                  [duct/module.ataraxy "0.2.0"]
                  [duct/module.cljs "0.3.2"]
+                 [coop.magnet.duct-module/cljs-externs "0.1.0"]
                  [reagent "0.8.0"]
                  [re-frame "0.10.5"]
                  [cljsjs/react-transition-group "2.3.0-0"]
