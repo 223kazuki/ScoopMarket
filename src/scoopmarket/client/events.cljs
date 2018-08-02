@@ -65,18 +65,23 @@
 (re-frame/reg-event-db
  ::abi-loaded
  (fn [db [_ {:keys [abi networks]}]]
-   (let [web3 (:web3 db)
-         network-id (keyword (str conf/network-id))
-         ;; TODO: Specify network ID.
-         address (-> networks network-id :address)
-         instance (web3-eth/contract-at web3 abi address)]
-     (re-frame/dispatch [::fetch-scoops (:my-address db)])
+   (if (:web3 db)
+     (let [web3 (:web3 db)
+           network-id (keyword (str conf/network-id))
+           ;; TODO: Specify network ID.
+           address (-> networks network-id :address)
+           instance (web3-eth/contract-at web3 abi address)]
+       (re-frame/dispatch [::fetch-scoops (:my-address db)])
+       (-> db
+           (assoc-in [:contract :abi] abi)
+           (assoc-in [:contract :networks] networks)
+           (assoc-in [:contract :address] address)
+           (assoc-in [:contract :instance] instance)
+           (assoc :abi-loaded true)
+           (dissoc :loading?)))
      (-> db
          (assoc-in [:contract :abi] abi)
          (assoc-in [:contract :networks] networks)
-         (assoc-in [:contract :address] address)
-         (assoc-in [:contract :instance] instance)
-         (assoc :abi-loaded true)
          (dissoc :loading?)))))
 
 (re-frame/reg-event-db

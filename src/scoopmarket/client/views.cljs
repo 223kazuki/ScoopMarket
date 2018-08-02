@@ -89,15 +89,18 @@
 
     :reagent-render
     (fn []
-      (let [scoops (re-frame/subscribe [::subs/scoops])]
+      (let [abi-loaded (re-frame/subscribe [::subs/abi-loaded])
+            scoops (re-frame/subscribe [::subs/scoops])]
         [:div
          "This is my page."
          [sa/Divider {:hidden true}]
-         [sa/Button {:on-click #(re-frame/dispatch [::events/connect-uport])} "Connect to uPort"]
+         [sa/Button {:on-click #(re-frame/dispatch [::events/connect-uport])}
+          "Connect to uPort"]
          [sa/Divider]
-         [scoop-uploader {:upload-handler
-                          (fn [reader]
-                            (re-frame/dispatch [::events/upload-image reader]))}]
+         (when @abi-loaded
+           [scoop-uploader {:upload-handler
+                            (fn [reader]
+                              (re-frame/dispatch [::events/upload-image reader]))}])
          [sa/Divider]
          [sa/Grid {:doubling true :columns 3}
           (for [[_ scoop] @scoops]
@@ -120,17 +123,14 @@
   (reagent/adapt-react-class js/ReactTransitionGroup.CSSTransition))
 
 (defn main-container [mobile?]
-  (let [abi-loaded (re-frame/subscribe [::subs/abi-loaded])
-        address (re-frame/subscribe [::subs/my-address])
-        active-panel (re-frame/subscribe [::subs/active-panel])]
+  (let [active-panel (re-frame/subscribe [::subs/active-panel])]
     [sa/Container {:className "mainContainer" :style {:marginTop "7em"}}
-     (when (and @abi-loaded @address)
-       [transition-group
-        [css-transition {:key @active-panel
-                         :classNames "pageChange"
-                         :timeout 500
-                         :className "transition"}
-         [(panels @active-panel) mobile?]]])]))
+     [transition-group
+      [css-transition {:key @active-panel
+                       :classNames "pageChange"
+                       :timeout 500
+                       :className "transition"}
+       [(panels @active-panel) mobile?]]]]))
 
 (defn main-panel []
   (let [sidebar-opened (re-frame/subscribe [::subs/sidebar-opened])]
