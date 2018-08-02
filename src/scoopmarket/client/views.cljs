@@ -37,10 +37,7 @@
 (defn tags [{:keys [:config :on-click-handler]}]
   (let [{:keys [:id :meta] :as scoop} (:scoop config)]
     (reagent/create-class
-     {:component-did-mount
-      #()
-
-      :reagent-render
+     {:reagent-render
       (fn []
         (let [{:keys [:tags]} meta
               form (re-frame/subscribe [::subs/form])
@@ -88,14 +85,14 @@
 (defn mypage-panel []
   (reagent/create-class
    {:component-did-mount
-    #(let [my-address (re-frame/subscribe [::subs/my-address])]
-       (re-frame/dispatch [::events/fetch-my-scoops @my-address]))
+    #()
 
     :reagent-render
     (fn []
       (let [scoops (re-frame/subscribe [::subs/scoops])]
         [:div
          "This is my page."
+         [sa/Divider {:hidden true}]
          [sa/Button {:on-click #(re-frame/dispatch [::events/connect-uport])} "Connect to uPort"]
          [sa/Divider]
          [scoop-uploader {:upload-handler
@@ -124,10 +121,10 @@
 
 (defn main-container [mobile?]
   (let [abi-loaded (re-frame/subscribe [::subs/abi-loaded])
-        my-address (re-frame/subscribe [::subs/my-address])
+        address (re-frame/subscribe [::subs/my-address])
         active-panel (re-frame/subscribe [::subs/active-panel])]
     [sa/Container {:className "mainContainer" :style {:marginTop "7em"}}
-     (when (and @abi-loaded @my-address)
+     (when (and @abi-loaded @address)
        [transition-group
         [css-transition {:key @active-panel
                          :classNames "pageChange"

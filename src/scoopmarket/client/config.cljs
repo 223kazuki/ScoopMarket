@@ -1,9 +1,7 @@
 (ns scoopmarket.client.config)
 
-(def debug?
-  ^boolean goog.DEBUG)
+(def debug? ^boolean goog.DEBUG)
 
 (when debug? (enable-console-print!))
 
-(def network-id
-  (if debug? 1533140371286 3))
+(def network-id (if debug? 4 4))

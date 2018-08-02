@@ -14,9 +14,13 @@
             [goog.string.format]
             [cljsjs.buffer]))
 
+(def is-mnid? (aget js/window "uportconnect" "MNID" "isMNID"))
+(def encode (aget js/window "uportconnect" "MNID" "encode"))
+(def decode (aget js/window "uportconnect" "MNID" "decode"))
+
 (re-frame/reg-event-fx
  ::initialize-db
- (fn [_ _]
+ (fn [{:keys [db]} _]
    {:db db/default-db
     :http-xhrio {:method :get
                  :uri (gstring/format "%s.json"
@@ -27,6 +31,38 @@
                  :on-failure [::api-failure]}}))
 
 (re-frame/reg-event-db
+ ::connect-uport
+ (fn [db _]
+   (let [Connect (aget js/window "uportconnect" "Connect")
+         SimpleSigner (aget js/window "uportconnect" "SimpleSigner")
+         uport (Connect. "Kazuki's new app"
+                         (clj->js {:clientId "2ongzbaHaEopuxDdxrCvU1XZqWt16oir144"
+                                   :network "rinkeby"
+                                   :signer (SimpleSigner "f5dc5848640a565994f9889d9ddda443a2fcf4c3d87aef3a74c54c4bcadc8ebd")}))]
+     (.then
+      (.requestCredentials uport
+                           (clj->js {:requested ["name" "phone" "country" "address"]
+                                     :notifications true}))
+      #(re-frame/dispatch [::request-credential-success %]))
+     (assoc db
+            :uport uport
+            :web3 (.getWeb3 uport)
+            :abi-loaded false
+            :my-address nil
+            :loading? false))))
+
+(re-frame/reg-event-db
+ ::request-credential-success
+ (fn [db [_ credential]]
+   (re-frame/dispatch [::abi-loaded (:contract db)])
+   (let [addr (aget credential "address")
+         address (when (is-mnid? addr)
+                   (aget (decode addr) "address"))]
+     (assoc db
+            :credential credential
+            :my-address address))))
+
+(re-frame/reg-event-db
  ::abi-loaded
  (fn [db [_ {:keys [abi networks]}]]
    (let [web3 (:web3 db)
@@ -34,28 +70,14 @@
          ;; TODO: Specify network ID.
          address (-> networks network-id :address)
          instance (web3-eth/contract-at web3 abi address)]
-     (re-frame/dispatch [::fetch-my-address])
+     (re-frame/dispatch [::fetch-scoops (:my-address db)])
      (-> db
          (assoc-in [:contract :abi] abi)
+         (assoc-in [:contract :networks] networks)
          (assoc-in [:contract :address] address)
          (assoc-in [:contract :instance] instance)
          (assoc :abi-loaded true)
          (dissoc :loading?)))))
-
-(re-frame/reg-event-fx
- ::fetch-my-address
- (fn [{:keys [:db]} _]
-   {:web3/call {:web3 (:web3 db)
-                :fns [{:fn cljs-web3.eth/accounts
-                       :args []
-                       :on-success [::fetch-my-address-success]
-                       :on-error [::api-failure]}]}}))
-
-(re-frame/reg-event-db
- ::fetch-my-address-success
- (fn [db [_ [address]]]
-   (-> db
-       (assoc :my-address address))))
 
 (re-frame/reg-event-db
  ::toggle-sidebar
@@ -77,7 +99,7 @@
        (assoc :loading? false))))
 
 (re-frame/reg-event-fx
- ::fetch-my-scoops
+ ::fetch-scoops
  (fn [{:keys [db]} [_ address]]
    {:web3/call {:web3 (:web3 db)
                 :fns [{:instance (get-in db [:contract :instance])
@@ -145,22 +167,35 @@
               (re-frame/dispatch [::mint (aget (first response) "hash")]))))
    db))
 
+;; (re-frame/reg-event-fx
+;;  ::mint
+;;  (fn [{:keys [db]} [_ hash]]
+;;    {:web3/call
+;;     {:web3 (:web3 db)
+;;      :fns [{:instance (get-in db [:contract :instance])
+;;             :fn :mint
+;;             :args [hash]
+;;             ;; :tx-opts {:gas 4700000
+;;             ;;           :gas-price 100000000000
+;;             ;;           ;; TODO: Specify value.
+;;             ;;           :value 10000000000000000}
+;;             ;; :on-tx-hash [::tx-hash]
+;;             ;; :on-tx-hash-error [::api-failure]
+;;             ;; :on-tx-success [::tx-success]
+;;             ;; :on-tx-error [::api-failure]
+;;             ;; :on-tx-receipt [::tx-receipt]
+;;             }]}}))
+
 (re-frame/reg-event-fx
  ::mint
  (fn [{:keys [db]} [_ hash]]
-   {:web3/call {:web3 (:web3 db)
-                :fns [{:instance (get-in db [:contract :instance])
-                       :fn :mint
-                       :args [hash]
-                       :tx-opts {:gas 4700000
-                                 :gas-price 100000000000
-                                 ;; TODO: Specify value.
-                                 :value 10000000000000000}
-                       :on-tx-hash [::tx-hash]
-                       :on-tx-hash-error [::api-failure]
-                       :on-tx-success [::tx-success]
-                       :on-tx-error [::api-failure]
-                       :on-tx-receipt [::tx-receipt]}]}}))
+   (web3-eth/contract-call (get-in db [:contract :instance])
+                           :mint hash  {:gas 4700000
+                                        :gas-price 100000000000
+                                        ;; TODO: Specify value.
+                                        :value 10000000000000000}
+                           (fn [err res]
+                             (js/console.log err res)))))
 
 (re-frame/reg-event-db
  ::tx-hash
@@ -226,28 +261,3 @@
                        :on-tx-success [::tx-success]
                        :on-tx-error [::api-failure]
                        :on-tx-receipt [::tx-receipt]}]}}))
-
-(re-frame/reg-event-db
- ::connect-uport
- (fn [db [_]]
-   (let [Connect (aget js/window "uportconnect" "Connect")
-         SimpleSigner (aget js/window "uportconnect" "SimpleSigner")
-         uport (Connect. "Kazuki's new app"
-                         (clj->js
-                          {:clientId "2ongzbaHaEopuxDdxrCvU1XZqWt16oir144"
-                           :network "ropsten"
-                           :signer (SimpleSigner "f5dc5848640a565994f9889d9ddda443a2fcf4c3d87aef3a74c54c4bcadc8ebd")}))
-         request-credentials (aget uport "")]
-     (.then (.requestCredentials uport
-                                 (clj->js {:requested ["name" "phone" "country"]
-                                           :notifications true}))
-            (fn [credential] (re-frame/dispatch [::connect-uport-success credential])))
-     (assoc db
-            :uport uport
-            :web3 (.getWeb3 uport)))))
-
-(re-frame/reg-event-db
- ::connect-uport-success
- (fn [db [_ credential]]
-   (js/console.log credential)
-   (assoc db :credential credential)))

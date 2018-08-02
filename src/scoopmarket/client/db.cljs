@@ -11,7 +11,7 @@
                                :protocol "https"}))
    :abi-loaded false
    :web3 (aget js/window "web3")
-   :my-address nil
+   :my-address (aget js/window "web3" "eth" "defaultAccount")
    :contract {:name "Scoop"
               :abi nil
               :instance nil
