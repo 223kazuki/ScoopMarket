@@ -47,7 +47,7 @@
   {:builds
    [{:id "dev"
      :source-paths ["src/cljs"]
-     :figwheel     {:on-jsload "scoopmarket.core/mount-root"}
+     :figwheel     {:on-jsload "scoopmarket.core/reset"}
      :compiler     {:main                 scoopmarket.core
                     :output-to            "resources/public/js/compiled/app.js"
                     :output-dir           "resources/public/js/compiled/out"

@@ -42,5 +42,9 @@
   (ig/halt! @system)
   (reset! system nil))
 
+(defn reset []
+  (stop)
+  (start))
+
 (defn ^:export init []
   (start))
