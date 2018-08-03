@@ -18,7 +18,7 @@
 (defn scoop-uploader [{:keys [:config :upload-handler]}]
   (let [uuid (random-uuid)]
     [:span
-     [sa/Label {:htmlFor uuid :as "label" :class "button"}
+     [sa/Label {:htmlFor uuid :as "label" :class "button" :size "large"}
       [sa/Icon {:name "upload"}] "Upload"]
      [:input {:id uuid :type "file" :style {:display "none"}
               :on-change (fn []
@@ -34,7 +34,7 @@
         v (aget (.-target el) "value")]
     (re-frame/dispatch [::events/update-form n (fn [_] v)])))
 
-(defn tags [{:keys [:config :on-click-handler]}]
+(defn meta-panel [{:keys [:config :on-click-handler]}]
   (let [{:keys [:id :meta] :as scoop} (:scoop config)]
     (reagent/create-class
      {:reagent-render
@@ -43,13 +43,12 @@
               form (re-frame/subscribe [::subs/form])
               new-tag ((keyword (str "new-tag/" id)) @form)]
           [sa/Segment
-           [sa/Input {:icon "tags"
-                      :iconPosition "left"
-                      :label (clj->js {:tag true :content "Add Tag"
-                                       :style {:cursor "pointer"}
-                                       :onClick #(when-not (empty? new-tag)
-                                                   (re-frame/dispatch [::events/add-scoop-tag id new-tag]))})
-                      :labelPosition "right"
+           [sa/Input {:icon (clj->js
+                             {:name "tags" :circular true :link true
+                              :onClick
+                              #(when-not (empty? new-tag)
+                                 (re-frame/dispatch [::events/add-scoop-tag id new-tag]))})
+                      :style {:width "100%"}
                       :placeholder "Enter tags"
                       :name (str "new-tag/" id)
                       :value (or new-tag "")
@@ -80,7 +79,7 @@
           [sa/ModalContent
            [:img {:style {:width "100%"} :src image-url}]]]
          [sa/CardContent
-          [tags {:config {:scoop scoop}}]]])})))
+          [meta-panel {:config {:scoop scoop}}]]])})))
 
 (defn mypage-panel []
   (reagent/create-class
@@ -94,9 +93,9 @@
         [:div
          "This is my page."
          [sa/Divider {:hidden true}]
-         [sa/Button {:on-click #(re-frame/dispatch [::events/connect-uport])}
-          "Connect to uPort"]
-         [sa/Divider]
+         [sa/Label {:as "label" :class "button" :size "large"
+                    :on-click #(re-frame/dispatch [::events/connect-uport])}
+          [sa/Icon {:name "id card"}] "Connect to uPort"]
          (when @abi-loaded
            [scoop-uploader {:upload-handler
                             (fn [reader]

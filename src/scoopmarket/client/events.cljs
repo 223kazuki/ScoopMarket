@@ -12,7 +12,8 @@
             [cljsjs.moment]
             [goog.string :as gstring]
             [goog.string.format]
-            [cljsjs.buffer]))
+            [cljsjs.buffer]
+            [clojure.core.async :refer [go <! timeout]]))
 
 (def is-mnid? (aget js/window "uportconnect" "MNID" "isMNID"))
 (def encode (aget js/window "uportconnect" "MNID" "encode"))
@@ -55,11 +56,12 @@
  ::request-credential-success
  (fn [db [_ credential]]
    (re-frame/dispatch [::abi-loaded (:contract db)])
-   (let [addr (aget credential "address")
-         address (when (is-mnid? addr)
-                   (aget (decode addr) "address"))]
+   (let [network-address (aget credential "address")
+         address (when (is-mnid? network-address )
+                   (aget (decode network-address) "address"))]
      (assoc db
             :credential credential
+            :network-address network-address
             :my-address address))))
 
 (re-frame/reg-event-db
@@ -146,10 +148,11 @@
      (when-not (empty? meta-hash)
        (cat meta-hash
             (fn [_ file]
-              (let [meta (js->clj (.parse js/JSON
-                                          (.toString file "utf8"))
-                                  :keywordize-keys true)]
-                (re-frame/dispatch [::fetch-meta-success id meta])))))
+              (when file
+                (let [meta (js->clj (.parse js/JSON
+                                            (.toString file "utf8"))
+                                    :keywordize-keys true)]
+                  (re-frame/dispatch [::fetch-meta-success id meta]))))))
      db)))
 
 (re-frame/reg-event-db
@@ -170,57 +173,47 @@
      (.then (add buffer)
             (fn [response]
               (re-frame/dispatch [::mint (aget (first response) "hash")]))))
-   db))
+   (assoc db :loading? true)))
 
-;; (re-frame/reg-event-fx
-;;  ::mint
-;;  (fn [{:keys [db]} [_ hash]]
-;;    {:web3/call
-;;     {:web3 (:web3 db)
-;;      :fns [{:instance (get-in db [:contract :instance])
-;;             :fn :mint
-;;             :args [hash]
-;;             ;; :tx-opts {:gas 4700000
-;;             ;;           :gas-price 100000000000
-;;             ;;           ;; TODO: Specify value.
-;;             ;;           :value 10000000000000000}
-;;             ;; :on-tx-hash [::tx-hash]
-;;             ;; :on-tx-hash-error [::api-failure]
-;;             ;; :on-tx-success [::tx-success]
-;;             ;; :on-tx-error [::api-failure]
-;;             ;; :on-tx-receipt [::tx-receipt]
-;;             }]}}))
+(defn wait-for-mined [web3 tx-hash pending-cb success-cb]
+  (letfn [(polling-loop []
+            (go
+              (<! (timeout 1000))
+              (web3-eth/get-transaction
+               web3 tx-hash
+               (fn [err res]
+                 (when-not err
+                   (wait-for-mined (js->clj res)))))))
+          (wait-for-mined [res]
+            (if (:block-number res)
+              (success-cb res)
+              (do
+                (pending-cb res)
+                (polling-loop))))]
+    (wait-for-mined {:block-number nil})))
 
-(re-frame/reg-event-fx
+(re-frame/reg-event-db
  ::mint
- (fn [{:keys [db]} [_ hash]]
-   (web3-eth/contract-call (get-in db [:contract :instance])
-                           :mint hash  {:gas 4700000
-                                        :gas-price 100000000000
-                                        ;; TODO: Specify value.
-                                        :value 10000000000000000}
-                           (fn [err res]
-                             (js/console.log err res)))))
+ (fn [db [_ hash]]
+   (let [{:keys [:web3 :contract :network-address]} db]
+     (web3-eth/contract-call (:instance contract)
+                             :mint hash  {:gas 4700000
+                                          :gas-price 100000000000
+                                          ;; TODO: Specify value.
+                                          :value 10000000000000000}
+                             (fn [err tx-hash]
+                               (if err
+                                 (js/console.log err)
+                                 (wait-for-mined web3 tx-hash
+                                                 #(js/console.log "pending")
+                                                 #(re-frame/dispatch [::mint-success %]))))))
+   (assoc db :loading? true)))
 
 (re-frame/reg-event-db
- ::tx-hash
- (fn [db [_ result]]
-   (js/console.log (pr-str result))
-   (assoc db :message {:status :info :text "Sending transaction..."} :loading? true)))
-
-(re-frame/reg-event-db
- ::tx-success
- (fn [db [_ result]]
-   (js/console.log (pr-str result))
-   (-> db
-       (assoc :message {:status :info :text "Transation was written in blockchain successfully." :transaction-result result})
-       (dissoc :loading? :form))))
-
-(re-frame/reg-event-db
- ::tx-receipt
- (fn [db [_ result]]
-   (js/console.log (pr-str result))
-   (assoc db :message {:status :info :text {:status "info" :text "Transaction was sent."}})))
+ ::mint-success
+ (fn [db [_ res]]
+   (re-frame/dispatch [::fetch-scoops (:my-address db)])
+   (assoc db :loading? false)))
 
 (re-frame/reg-event-db
  ::add-scoop-tag
@@ -250,19 +243,25 @@
      (.then (add buffer)
             (fn [response]
               (re-frame/dispatch [::update-meta id (aget (first response) "hash")]))))
-   db))
+   (assoc db :loading? true)))
 
-(re-frame/reg-event-fx
+(re-frame/reg-event-db
  ::update-meta
- (fn [{:keys [db]} [_ id hash]]
-   {:web3/call {:web3 (:web3 db)
-                :fns [{:instance (get-in db [:contract :instance])
-                       :fn :set-token-meta-data-uri
-                       :args [id hash]
-                       :tx-opts {:gas 4700000
-                                 :gas-price 100000000000}
-                       :on-tx-hash [::tx-hash]
-                       :on-tx-hash-error [::api-failure]
-                       :on-tx-success [::tx-success]
-                       :on-tx-error [::api-failure]
-                       :on-tx-receipt [::tx-receipt]}]}}))
+ (fn [db [_ id hash]]
+   (let [{:keys [:web3 :contract :network-address]} db]
+     (web3-eth/contract-call (:instance contract)
+                             :set-token-meta-data-uri
+                             id hash
+                             {:gas 4700000
+                              :gas-price 100000000000}
+                             (fn [err tx-hash]
+                               (wait-for-mined web3 tx-hash
+                                               #(js/console.log "pending")
+                                               #(re-frame/dispatch [::update-meta-success %]))))
+     (assoc db :loading? true))))
+
+(re-frame/reg-event-db
+ ::update-meta-success
+ (fn [db [_ res]]
+   (re-frame/dispatch [::fetch-scoops (:my-address db)])
+   (assoc db :loading? false)))
