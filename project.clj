@@ -3,7 +3,7 @@
   :url "http://example.com/FIXME"
   :min-lein-version "2.5.3"
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/clojurescript "1.10.238"]
+                 [org.clojure/clojurescript "1.10.339"]
                  [reagent "0.8.0"]
                  [re-frame "0.10.5"]
                  [integrant "0.6.3"]
@@ -43,7 +43,6 @@
                   :plugins      [[lein-figwheel "0.5.16"]
                                  [lein-doo "0.1.8"]
                                  [lein-pdo "0.1.1"]]}}
-
   :cljsbuild
   {:builds
    [{:id "dev"
