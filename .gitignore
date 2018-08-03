@@ -19,6 +19,8 @@ pom.xml.asc
 /.lein-*
 /.nrepl-port
 /.dir-locals.el
-/profiles.clj
-/dev/resources/local.edn
-/dev/src/local.clj
+
+/*.log
+/*-init.clj
+/resources/public/js/compiled
+out

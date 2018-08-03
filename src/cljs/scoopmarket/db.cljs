@@ -1,4 +1,4 @@
-(ns scoopmarket.client.db
+(ns scoopmarket.db
   (:require [cljs-web3.core :as web3]
             [cljsjs.ipfs]))
 

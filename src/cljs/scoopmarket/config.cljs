@@ -1,4 +1,4 @@
-(ns scoopmarket.client.config)
+(ns scoopmarket.config)
 
 (def debug? ^boolean goog.DEBUG)
 

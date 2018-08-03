@@ -1,40 +1,75 @@
 (defproject ScoopMarket "0.1.0-SNAPSHOT"
   :description "A market place for scoops."
   :url "http://example.com/FIXME"
-  :min-lein-version "2.0.0"
-  :dependencies [[org.clojure/clojure "1.9.0"]
-                 [duct/core "0.6.2"]
-                 [duct/module.logging "0.3.1"]
-                 [duct/module.web "0.6.4"]
-                 [duct/module.ataraxy "0.2.0"]
-                 [duct/module.cljs "0.3.2"]
-                 [coop.magnet.duct-module/cljs-externs "0.1.0"]
+  :min-lein-version "2.5.3"
+  :dependencies [[org.clojure/clojure "1.8.0"]
+                 [org.clojure/clojurescript "1.10.238"]
                  [reagent "0.8.0"]
                  [re-frame "0.10.5"]
-                 [cljsjs/react-transition-group "2.3.0-0"]
-                 [cljsjs/moment "2.22.0-0"]
+                 [integrant "0.6.3"]
+                 [cljsjs/buffer "5.1.0-1"]
                  [cljsjs/ipfs-api "18.1.1-0"]
-                 [soda-ash "0.78.2" :exclusions [[cljsjs/react]]]
-                 [day8.re-frame/http-fx "0.1.6"]
-                 [district0x.re-frame/web3-fx "1.0.5" :exclusions [[cljs-web3]]]
+                 [cljsjs/moment "2.22.0-0"]
+                 [cljsjs/react-transition-group "2.3.0-0"]
                  [cljs-web3 "0.19.0-0-11"]
                  [kibu/pushy "0.3.8"]
                  [bidi "2.1.3"]
-                 [cljsjs/buffer "5.1.0-1"]]
-  :plugins [[duct/lein-duct "0.10.6"]]
-  :main ^:skip-aot scoopmarket.main
-  :uberjar-name  "scoopmarket-standalone.jar"
-  :resource-paths ["resources" "target/resources"]
-  :prep-tasks     ["javac" "compile" ["run" ":duct/compiler"]]
+                 [soda-ash "0.78.2" :exclusions [[cljsjs/react]]]
+                 [day8.re-frame/http-fx "0.1.6"]
+                 [district0x.re-frame/web3-fx "1.0.5" :exclusions [[cljs-web3]]]]
+  :plugins [[lein-cljsbuild "1.1.7"]]
+  ;; :main ^:skip-aot scoopmarket.main
+  ;; :uberjar-name  "scoopmarket-standalone.jar"
+  ;; :resource-paths ["resources" "target/resources"]
+  :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"
+                                    "test/js"]
+  :figwheel {:css-dirs ["resources/public/css"]}
+  :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}
+  :aliases {"dev" ["do" "clean"
+                   ["pdo" ["figwheel" "dev"]]]
+            "build" ["with-profile" "+prod,-dev" "do"
+                     ["clean"]
+                     ["cljsbuild" "once" "min"]]}
   :profiles
   {:dev  [:project/dev :profiles/dev]
-   :repl {:prep-tasks   ^:replace ["javac" "compile"]
-          :repl-options {:init-ns user
-                         :nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}}
-   :uberjar {:aot :all}
+   :prod { :dependencies [[day8.re-frame/tracing-stubs "0.5.1"]]}
    :profiles/dev {}
-   :project/dev  {:source-paths   ["dev/src"]
+   :project/dev  {:dependencies [[binaryage/devtools "0.9.10"]
+                                 [day8.re-frame/re-frame-10x "0.3.3"]
+                                 [day8.re-frame/tracing "0.5.1"]
+                                 [figwheel-sidecar "0.5.16"]
+                                 [cider/piggieback "0.3.5"]]
                   :resource-paths ["dev/resources" "build"]
-                  :dependencies   [[integrant/repl "0.2.0"]
-                                   [eftest "0.4.1"]
-                                   [kerodon "0.9.0"]]}})
+                  :plugins      [[lein-figwheel "0.5.16"]
+                                 [lein-doo "0.1.8"]
+                                 [lein-pdo "0.1.1"]]}}
+
+  :cljsbuild
+  {:builds
+   [{:id "dev"
+     :source-paths ["src/cljs"]
+     :figwheel     {:on-jsload "scoopmarket.core/mount-root"}
+     :compiler     {:main                 scoopmarket.core
+                    :output-to            "resources/public/js/compiled/app.js"
+                    :output-dir           "resources/public/js/compiled/out"
+                    :asset-path           "js/compiled/out"
+                    :source-map-timestamp true
+                    :preloads             [devtools.preload
+                                           day8.re-frame-10x.preload]
+                    :closure-defines      {"re_frame.trace.trace_enabled_QMARK_" true
+                                           "day8.re_frame.tracing.trace_enabled_QMARK_" true}
+                    :external-config      {:devtools/config {:features-to-install :all}}}}
+    {:id "min"
+     :source-paths ["src/cljs"]
+     :compiler     {:main            scoopmarket.core
+                    :output-to       "resources/public/js/compiled/app.js"
+                    :optimizations   :advanced
+                    :closure-defines {goog.DEBUG false}
+                    :pretty-print    false
+                    :externs ["resources/uport-connect.ext.js"]}}
+    {:id "test"
+     :source-paths ["src/cljs" "test/cljs"]
+     :compiler     {:main          scoopmarket.runner
+                    :output-to     "resources/public/js/compiled/test.js"
+                    :output-dir    "resources/public/js/compiled/test/out"
+                    :optimizations :none}}]})

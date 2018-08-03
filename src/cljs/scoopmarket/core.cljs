@@ -1,11 +1,11 @@
-(ns scoopmarket.client.core
+(ns scoopmarket.core
   (:require [reagent.core :as reagent]
             [re-frame.core :as re-frame]
             [integrant.core :as ig]
-            [scoopmarket.client.events :as events]
-            [scoopmarket.client.views :as views]
-            [scoopmarket.client.config :as config]
-            [scoopmarket.client.routes :as routes]))
+            [scoopmarket.events :as events]
+            [scoopmarket.views :as views]
+            [scoopmarket.config :as config]
+            [scoopmarket.routes :as routes]))
 
 (defn dev-setup []
   (when config/debug?
@@ -35,8 +35,12 @@
           :routes (ig/ref ::routes)}})
 
 (defn start []
+  (dev-setup)
   (reset! system (ig/init system-conf)))
 
 (defn stop []
   (ig/halt! @system)
   (reset! system nil))
+
+(defn ^:export init []
+  (start))

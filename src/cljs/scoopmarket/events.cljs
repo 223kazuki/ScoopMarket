@@ -1,7 +1,7 @@
-(ns scoopmarket.client.events
+(ns scoopmarket.events
   (:require [re-frame.core :as re-frame]
-            [scoopmarket.client.db :as db]
-            [scoopmarket.client.config :as conf]
+            [scoopmarket.db :as db]
+            [scoopmarket.config :as conf]
             [day8.re-frame.http-fx]
             [district0x.re-frame.web3-fx]
             [ajax.core :as ajax]

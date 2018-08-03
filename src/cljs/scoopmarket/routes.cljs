@@ -1,8 +1,8 @@
-(ns scoopmarket.client.routes
+(ns scoopmarket.routes
   (:require [bidi.bidi :as bidi]
             [pushy.core :as pushy]
             [re-frame.core :as re-frame]
-            [scoopmarket.client.events :as events]))
+            [scoopmarket.events :as events]))
 
 (def routes ["/" {""       :mypage
                   "market" :market}])
