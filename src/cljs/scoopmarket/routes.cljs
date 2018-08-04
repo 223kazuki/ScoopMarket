@@ -10,7 +10,10 @@
 (defn- parse-url [url]
   (when (empty? url)
     (set! js/window.location "/#/"))
-  (bidi/match-route routes url))
+  (let [url (-> url
+                (clojure.string/split #"&")
+                (first))]
+    (bidi/match-route routes url)))
 
 (defn- dispatch-route [matched-route]
   (let [panel-name (keyword (str (name (:handler matched-route)) "-panel"))]
