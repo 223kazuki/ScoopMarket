@@ -8,6 +8,8 @@
                   "market" :market}])
 
 (defn- parse-url [url]
+  (when (empty? url)
+    (set! js/window.location "/#/"))
   (bidi/match-route routes url))
 
 (defn- dispatch-route [matched-route]
@@ -17,6 +19,7 @@
 (def history (pushy/pushy dispatch-route parse-url))
 
 (defn app-routes []
+  (.setUseFragment (aget history "history") true)
   (pushy/start! history))
 
 (def url-for (partial bidi/path-for routes))
