@@ -24,7 +24,7 @@
  (fn [{:keys [db]} _]
    {:db db/default-db
     :http-xhrio {:method :get
-                 :uri (gstring/format "%s.json"
+                 :uri (gstring/format "contracts/%s.json"
                                       (get-in db/default-db [:contract :name]))
                  :timeout 6000
                  :response-format (ajax/json-response-format {:keywords? true})
@@ -42,9 +42,13 @@
                                    :signer (SimpleSigner "f5dc5848640a565994f9889d9ddda443a2fcf4c3d87aef3a74c54c4bcadc8ebd")}))]
      (.then
       (.requestCredentials uport
-                           (clj->js {:requested ["name" "phone" "country" "address"]
+                           (clj->js {:requested ["name" "avatar" "address"]
                                      :notifications true}))
-      #(re-frame/dispatch [::request-credential-success %]))
+      (fn [cred err]
+        (if err
+          (js/console.err err)
+          (re-frame/dispatch [::request-credential-success (js->clj cred
+                                                                    :keywordize-keys true)]))))
      (assoc db
             :uport uport
             :web3 (.getWeb3 uport)
@@ -56,12 +60,12 @@
  ::request-credential-success
  (fn [db [_ credential]]
    (re-frame/dispatch [::abi-loaded (:contract db)])
-   (let [network-address (aget credential "address")
-         address (when (is-mnid? network-address )
-                   (aget (decode network-address) "address"))]
+   (let [{:keys [:address :avatar]} credential
+         address (when (is-mnid? address )
+                   (aget (decode address) "address"))]
      (assoc db
             :credential credential
-            :network-address network-address
+            :network-address address
             :my-address address))))
 
 (re-frame/reg-event-db
@@ -112,11 +116,11 @@
                 :fns [{:instance (get-in db [:contract :instance])
                        :fn :scoops-of
                        :args [address]
-                       :on-success [::fetch-my-scoops-success]
+                       :on-success [::fetch-scoops-success]
                        :on-error [::api-failure]}]}}))
 
 (re-frame/reg-event-db
- ::fetch-my-scoops-success
+ ::fetch-scoops-success
  (fn [db [_ scoops]]
    (assoc db :scoops (->> scoops
                           (map #(let [id (first (aget % "c"))]
@@ -138,13 +142,8 @@
  (fn [db [_ scoop]]
    (let [[id timestamp image-hash meta-hash] scoop
          id (first (aget id "c"))
+         timestamp (first (aget timestamp "c"))
          cat (aget (:ipfs db) "cat")]
-     (cat image-hash
-          (fn [_ bytes]
-            ;; TODO: Not only jpeg.
-            (let [blob (js/Blob. (clj->js [bytes]) (clj->js {:type "image/jpeg"}))
-                  image-url (js/window.URL.createObjectURL (clj->js blob))]
-              (re-frame/dispatch [::fetch-image-success id image-url]))))
      (when-not (empty? meta-hash)
        (cat meta-hash
             (fn [_ file]
@@ -153,12 +152,9 @@
                                             (.toString file "utf8"))
                                     :keywordize-keys true)]
                   (re-frame/dispatch [::fetch-meta-success id meta]))))))
-     db)))
-
-(re-frame/reg-event-db
- ::fetch-image-success
- (fn [db [_ id image-url]]
-   (assoc-in db [:scoops (keyword (str id)) :image-url] image-url)))
+     (update-in db [:scoops (keyword (str id))]
+                assoc :id id :timestamp timestamp :image-hash image-hash
+                :meta-hash meta-hash))))
 
 (re-frame/reg-event-db
  ::fetch-meta-success
@@ -172,6 +168,7 @@
          add (aget (:ipfs db) "add")]
      (.then (add buffer)
             (fn [response]
+              (println (js->clj response :keywordize-keys true))
               (re-frame/dispatch [::mint (aget (first response) "hash")]))))
    (assoc db :loading? true)))
 

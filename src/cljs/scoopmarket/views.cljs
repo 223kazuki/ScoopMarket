@@ -21,6 +21,7 @@
      [sa/Label {:htmlFor uuid :as "label" :class "button" :size "large"}
       [sa/Icon {:name "upload"}] "Upload"]
      [:input {:id uuid :type "file" :style {:display "none"}
+              :accept "image/*" :capture "camera"
               :on-change (fn []
                            (let [el (.getElementById js/document uuid)
                                  file (aget (.-files el) 0)
@@ -63,49 +64,59 @@
            [sa/Button {:on-click #(re-frame/dispatch [::events/upload-meta id])} "Update"]]))})))
 
 (defn scoop-panel [{:keys [:config :on-click-handler]}]
-  (let [{:keys [:id :image-url] :as scoop} (:scoop config)]
+  (let [{:keys [:id :timestamp :image-hash] :as scoop} (:scoop config)]
     (reagent/create-class
      {:component-did-mount
-      #(when (nil? image-url)
+      #(when (nil? image-hash)
          (re-frame/dispatch [::events/fetch-scoop id]))
 
       :reagent-render
       (fn []
-        [sa/Card {:style {:width "100%"}}
-         [sa/Modal {:close-icon true
-                    :size "large"
-                    :trigger (js/React.createElement
-                              "img" (clj->js {:style {:width "100%"} :src image-url}))}
-          [sa/ModalContent
-           [:img {:style {:width "100%"} :src image-url}]]]
-         [sa/CardContent
-          [meta-panel {:config {:scoop scoop}}]]])})))
+        (when image-hash
+          (let [image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)]
+            [sa/Card {:style {:width "100%"}}
+             [sa/Modal {:close-icon true
+                        :size "large"
+                        :trigger (js/React.createElement
+                                  "img" (clj->js {:style {:width "100%"}
+                                                  :src image-uri}))}
+              [sa/ModalContent
+               [:img {:style {:width "100%"} :src image-uri}]]]
+             [sa/CardContent
+              [sa/Label
+               [sa/Icon {:name "clock"}]
+               (.format (.unix js/moment timestamp)
+                        "YYYY/MM/DD HH:mm:ss")]
+              [meta-panel {:config {:scoop scoop}}]]])))})))
 
 (defn mypage-panel []
   (reagent/create-class
-   {:component-did-mount
-    #()
-
-    :reagent-render
+   {:reagent-render
     (fn []
       (let [abi-loaded (re-frame/subscribe [::subs/abi-loaded])
-            scoops (re-frame/subscribe [::subs/scoops])]
-        [:div
-         "This is my page."
-         [sa/Divider {:hidden true}]
-         [sa/Label {:as "label" :class "button" :size "large"
-                    :on-click #(re-frame/dispatch [::events/connect-uport])}
-          [sa/Icon {:name "id card"}] "Connect to uPort"]
-         (when @abi-loaded
-           [scoop-uploader {:upload-handler
-                            (fn [reader]
-                              (re-frame/dispatch [::events/upload-image reader]))}])
-         [sa/Divider]
-         [sa/Grid {:doubling true :columns 3}
-          (for [[_ scoop] @scoops]
-            ^{:key scoop}
-            [sa/GridColumn
-             [scoop-panel {:config {:scoop scoop}}]])]]))}))
+            scoops (re-frame/subscribe [::subs/scoops])
+            credential (re-frame/subscribe [::subs/credential])]
+        (let [{:keys [avatar name]} @credential]
+          [:div
+           [sa/Header {:as "h1"} (if name
+                                   name "This is my page.")]
+           (when-let [image-uri (get-in @credential [:avatar :uri])]
+             [:img {:src image-uri}])
+           [sa/Divider {:hidden true}]
+           [sa/Label {:as "label" :class "button" :size "large"
+                      :on-click #(re-frame/dispatch [::events/connect-uport])}
+            [sa/Icon {:name "id card"}] "Connect to uPort"]
+           (when @abi-loaded
+             [scoop-uploader {:upload-handler
+                              (fn [reader]
+                                (re-frame/dispatch [::events/upload-image reader]))}])
+           [sa/Divider]
+           [sa/Grid {:doubling true :columns 3}
+            (for [[_ scoop] (->> @scoops
+                                 (sort-by key))]
+              ^{:key scoop}
+              [sa/GridColumn
+               [scoop-panel {:config {:scoop scoop}}]])]])))}))
 
 (defn market-panel [] [:div "This is market."])
 (defn none-panel   [] [:div])

@@ -35,3 +35,8 @@
  ::scoops
  (fn [db]
    (:scoops db)))
+
+(re-frame/reg-sub
+ ::credential
+ (fn [db]
+   (:credential db)))
