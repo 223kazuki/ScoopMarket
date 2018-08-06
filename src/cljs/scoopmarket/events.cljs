@@ -22,14 +22,20 @@
 (re-frame/reg-event-fx
  ::initialize-db
  (fn [{:keys [db]} _]
-   {:db db/default-db
-    :http-xhrio {:method :get
-                 :uri (gstring/format "contracts/%s.json"
-                                      (get-in db/default-db [:contract :name]))
-                 :timeout 6000
-                 :response-format (ajax/json-response-format {:keywords? true})
-                 :on-success [::abi-loaded]
-                 :on-failure [::api-failure]}}))
+   (let [ipfs-hash (.. js/document
+                       (querySelector "meta[name=ipfs-hash]"))]
+     {:db db/default-db
+      :http-xhrio {:method :get
+                   :uri (if ipfs-hash
+                          (gstring/format "/ipfs/%s/contracts/%s.json"
+                                          (.getAttribute ipfs-hash "content")
+                                          (get-in db/default-db [:contract :name]))
+                          (gstring/format "/contracts/%s.json"
+                                          (get-in db/default-db [:contract :name])))
+                   :timeout 6000
+                   :response-format (ajax/json-response-format {:keywords? true})
+                   :on-success [::abi-loaded]
+                   :on-failure [::api-failure]}})))
 
 (re-frame/reg-event-db
  ::connect-uport

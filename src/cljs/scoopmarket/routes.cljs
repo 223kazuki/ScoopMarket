@@ -9,7 +9,7 @@
 
 (defn- parse-url [url]
   (when (empty? url)
-    (set! js/window.location "/#/"))
+    (set! js/window.location (str js/location.pathname "#/")))
   (let [url (-> url
                 (clojure.string/split #"&")
                 (first))]
