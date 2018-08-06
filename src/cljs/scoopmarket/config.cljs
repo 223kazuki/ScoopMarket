@@ -4,4 +4,4 @@
 
 (when debug? (enable-console-print!))
 
-(def network-id (if debug? 4 4))
+(def network-id (if debug? 1533140371286 4))

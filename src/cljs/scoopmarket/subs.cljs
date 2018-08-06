@@ -40,3 +40,8 @@
  ::credential
  (fn [db]
    (:credential db)))
+
+(re-frame/reg-sub
+ ::is-rinkeby?
+ (fn [db]
+   (:is-rinkeby? db)))

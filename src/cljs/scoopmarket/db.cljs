@@ -11,6 +11,7 @@
                                :protocol "https"}))
    :abi-loaded false
    :web3 (aget js/window "web3")
+   :is-rinkeby? false
    :my-address (when-let [web3 (aget js/window "web3")]
                  (aget web3 "eth" "defaultAccount"))
    :contract {:name "Scoop"

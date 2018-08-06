@@ -3,6 +3,7 @@
             [reagent.core :as reagent]
             [scoopmarket.subs :as subs]
             [scoopmarket.events :as events]
+            [scoopmarket.config :as conf]
             [soda-ash.core :as sa]
             [cljsjs.semantic-ui-react]
             [cljsjs.react-transition-group]
@@ -133,14 +134,20 @@
   (reagent/adapt-react-class js/ReactTransitionGroup.CSSTransition))
 
 (defn main-container [mobile?]
-  (let [active-panel (re-frame/subscribe [::subs/active-panel])]
-    [sa/Container {:className "mainContainer" :style {:marginTop "7em"}}
-     [transition-group
-      [css-transition {:key @active-panel
-                       :classNames "pageChange"
-                       :timeout 500
-                       :className "transition"}
-       [(panels @active-panel) mobile?]]]]))
+  (let [active-panel (re-frame/subscribe [::subs/active-panel])
+        abi-loaded (re-frame/subscribe [::subs/abi-loaded])
+        is-rinkeby? (re-frame/subscribe [::subs/is-rinkeby?])]
+    (if (and (not conf/debug?) @abi-loaded (not @is-rinkeby?))
+      [sa/Modal {:size "large" :open true}
+       [sa/ModalContent
+        [:div "You must use Rinkeby test network!"]]]
+      [sa/Container {:className "mainContainer" :style {:marginTop "7em"}}
+       [transition-group
+        [css-transition {:key @active-panel
+                         :classNames "pageChange"
+                         :timeout 500
+                         :className "transition"}
+         [(panels @active-panel) mobile?]]]])))
 
 (defn main-panel []
   (let [sidebar-opened (re-frame/subscribe [::subs/sidebar-opened])]

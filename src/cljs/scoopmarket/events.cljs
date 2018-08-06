@@ -57,7 +57,6 @@
                                                                     :keywordize-keys true)]))))
      (assoc db
             :uport uport
-            :web3 (.getWeb3 uport)
             :abi-loaded false
             :my-address nil
             :loading? false))))
@@ -67,9 +66,11 @@
  (fn [db [_ credential]]
    (re-frame/dispatch [::abi-loaded (:contract db)])
    (let [{:keys [:address :avatar]} credential
-         address (when (is-mnid? address )
+         uport (:uport db)
+         address (when (is-mnid? address)
                    (aget (decode address) "address"))]
      (assoc db
+            :web3 (.getWeb3 uport)
             :credential credential
             :network-address address
             :my-address address))))
@@ -89,6 +90,16 @@
            (assoc-in [:contract :networks] networks)
            (assoc-in [:contract :address] address)
            (assoc-in [:contract :instance] instance)
+           (assoc :is-rinkeby? (or (some-> (:web3 db)
+                                           (aget "currentProvider")
+                                           (aget "publicConfigStore")
+                                           (aget "_state")
+                                           (aget "networkVersion")
+                                           (= "4" ))
+                                   (some-> (:uport db)
+                                           (aget "network")
+                                           (aget "id")
+                                           (= "0x4"))))
            (assoc :abi-loaded true)
            (dissoc :loading?)))
      (-> db
