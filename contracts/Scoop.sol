@@ -9,9 +9,13 @@ contract Scoop is ERC721Token, Ownable {
     using SafeMath for uint;
 
     struct ScoopStruct {
+        string name;
         uint   timestamp;
         string imageURI;
+        uint price;
+        bool forSale;
         string metaDataURI;
+        address author;
     }
 
     ScoopStruct[] scoops;
@@ -20,10 +24,10 @@ contract Scoop is ERC721Token, Ownable {
 
     constructor() public ERC721Token("Scoop", "SCP") {}
 
-    function mint(string _imageURI) external payable {
+    function mint(string _name, uint _price, bool _forSale, string _imageURI) external payable {
         require(msg.value == mintCost);
 
-        ScoopStruct memory _scoop = ScoopStruct(block.timestamp, _imageURI, "");
+        ScoopStruct memory _scoop = ScoopStruct(_name, block.timestamp, _imageURI, _price, _forSale, "", msg.sender);
         uint tokenID = scoops.push(_scoop).sub(1);
 
         super._mint(msg.sender, tokenID);
@@ -43,8 +47,8 @@ contract Scoop is ERC721Token, Ownable {
         scoop.metaDataURI = _metaDataURI;
     }
 
-    function scoop(uint _tokenID) external view returns (uint, uint, string, string) {
+    function scoop(uint _tokenID) external view returns (uint, string, uint, string, uint, bool, string, address) {
         ScoopStruct memory _scoop = scoops[_tokenID];
-        return (_tokenID, _scoop.timestamp, _scoop.imageURI, _scoop.metaDataURI);
+        return (_tokenID, _scoop.name, _scoop.timestamp, _scoop.imageURI, _scoop.price, _scoop.forSale, _scoop.metaDataURI, _scoop.author);
     }
 }

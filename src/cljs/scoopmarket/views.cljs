@@ -11,10 +11,11 @@
 
 (defn- dimmer []
   (let [loading? (re-frame/subscribe [::subs/loading?])]
-    [sa/Transition {:visible @loading? :animation "fade" :duration 500
+    [sa/Transition {:visible (not (nil? @loading?)) :animation "fade" :duration 500
                     :unmountOnHide true}
      [sa/Dimmer {:active true :page true}
-      [sa/Loader "Loading..."]]]))
+      [sa/Loader (if-let [message (:message @loading?)]
+                   message "Loading...")]]]))
 
 (defn scoop-uploader [{:keys [:config :upload-handler]}]
   (let [uuid (random-uuid)]
@@ -34,6 +35,11 @@
 (defn- input-text-handler [el]
   (let [n (aget (.-target el) "name")
         v (aget (.-target el) "value")]
+    (re-frame/dispatch [::events/update-form n (fn [_] v)])))
+
+(defn- check-handler [_ el]
+  (let [n (aget el "name")
+        v (aget el "checked")]
     (re-frame/dispatch [::events/update-form n (fn [_] v)])))
 
 (defn meta-panel [{:keys [:config :on-click-handler]}]
@@ -65,7 +71,7 @@
            [sa/Button {:on-click #(re-frame/dispatch [::events/upload-meta id])} "Update"]]))})))
 
 (defn scoop-panel [{:keys [:config :on-click-handler]}]
-  (let [{:keys [:id :timestamp :image-hash] :as scoop} (:scoop config)]
+  (let [{:keys [:id :name :timestamp :image-hash :price :for-sale? :author] :as scoop} (:scoop config)]
     (reagent/create-class
      {:component-did-mount
       #(when (nil? image-hash)
@@ -84,10 +90,10 @@
               [sa/ModalContent
                [:img {:style {:width "100%"} :src image-uri}]]]
              [sa/CardContent
-              [sa/Label
-               [sa/Icon {:name "clock"}]
-               (.format (.unix js/moment timestamp)
-                        "YYYY/MM/DD HH:mm:ss")]
+              [sa/Header {:as "h3"} name]
+              (str "Price : " price "eth : ") (if for-sale? "For sale" "Not for sale") [:br]
+              (str "Uploaded : " (.format (.unix js/moment timestamp)
+                                          "YYYY/MM/DD HH:mm:ss"))
               [meta-panel {:config {:scoop scoop}}]]])))})))
 
 (defn mypage-panel []
@@ -96,17 +102,43 @@
     (fn []
       (let [abi-loaded (re-frame/subscribe [::subs/abi-loaded])
             scoops (re-frame/subscribe [::subs/scoops])
-            credential (re-frame/subscribe [::subs/credential])]
+            credential (re-frame/subscribe [::subs/credential])
+            form (re-frame/subscribe [::subs/form])]
         (let [{:keys [avatar name]} @credential]
           [:div
-           [sa/Header {:as "h1"} (if name
-                                   name "This is my page.")]
+           [sa/Header {:as "h1"} (if name name "This is my page.")]
            (when-let [image-uri (get-in @credential [:avatar :uri])]
              [:img {:src image-uri}])
            [sa/Divider {:hidden true}]
            [sa/Label {:as "label" :class "button" :size "large"
                       :on-click #(re-frame/dispatch [::events/connect-uport])}
             [sa/Icon {:name "id card"}] "Connect to uPort"]
+           (when (:new-scoop/image-hash @form)
+             [sa/Modal {:open true :size "small"}
+              [sa/ModalContent
+               [sa/Segment
+                [sa/Form
+                 [sa/FormField
+                  [:label "Scoop Name"]
+                  [:input {:placeholder "My Scoop"
+                           :name "new-scoop/name"
+                           :value (:new-scoop/name @form "")
+                           :on-change input-text-handler}]]
+                 [sa/FormField
+                  [sa/Checkbox {:name "new-scoop/for-sale?"
+                                :on-change check-handler
+                                :checked (:new-scoop/for-sale? @form false)
+                                :label "For sale?"}]]
+                 [sa/FormField
+                  [:label "Scoop Price"]
+                  [:input {:placeholder "1.0 eth"
+                           :name "new-scoop/price"
+                           :type "number"
+                           :disabled (not (:new-scoop/for-sale? @form false))
+                           :value (:new-scoop/price @form "")
+                           :on-change input-text-handler}]]]
+                [sa/Divider {:hidden true}]
+                [sa/Button {:on-click #(re-frame/dispatch [::events/mint])} "Mint"]]]])
            (when @abi-loaded
              [scoop-uploader {:upload-handler
                               (fn [reader]

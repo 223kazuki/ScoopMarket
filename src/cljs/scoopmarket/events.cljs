@@ -59,7 +59,7 @@
             :uport uport
             :abi-loaded false
             :my-address nil
-            :loading? false))))
+            :loading? nil))))
 
 (re-frame/reg-event-db
  ::request-credential-success
@@ -124,7 +124,7 @@
    (js/console.log "Api failure." result)
    (-> db
        (assoc :message {:status :error :text (str result)})
-       (assoc :loading? false))))
+       (dissoc :loading?))))
 
 (re-frame/reg-event-fx
  ::fetch-scoops
@@ -157,8 +157,9 @@
 (re-frame/reg-event-db
  ::fetch-scoop-success
  (fn [db [_ scoop]]
-   (let [[id timestamp image-hash meta-hash] scoop
+   (let [[id name timestamp image-hash price for-sale? meta-hash author] scoop
          id (first (aget id "c"))
+         price (first (aget price "c"))
          timestamp (first (aget timestamp "c"))
          cat (aget (:ipfs db) "cat")]
      (when-not (empty? meta-hash)
@@ -170,8 +171,8 @@
                                     :keywordize-keys true)]
                   (re-frame/dispatch [::fetch-meta-success id meta]))))))
      (update-in db [:scoops (keyword (str id))]
-                assoc :id id :timestamp timestamp :image-hash image-hash
-                :meta-hash meta-hash))))
+                assoc :id id :name name :timestamp timestamp :image-hash image-hash
+                :price price :for-sale? for-sale? :author author :meta-hash meta-hash))))
 
 (re-frame/reg-event-db
  ::fetch-meta-success
@@ -185,9 +186,15 @@
          add (aget (:ipfs db) "add")]
      (.then (add buffer)
             (fn [response]
-              (println (js->clj response :keywordize-keys true))
-              (re-frame/dispatch [::mint (aget (first response) "hash")]))))
-   (assoc db :loading? true)))
+              (re-frame/dispatch [::ready-to-mint (aget (first response) "hash")]))))
+   (assoc db :loading? {:message "Uploading file to IPFS..."})))
+
+(re-frame/reg-event-db
+ ::ready-to-mint
+ (fn [db [_ hash]]
+   (-> db
+       (dissoc :loading?)
+       (assoc-in [:form :new-scoop/image-hash] hash))))
 
 (defn wait-for-mined [web3 tx-hash pending-cb success-cb]
   (letfn [(polling-loop []
@@ -208,26 +215,31 @@
 
 (re-frame/reg-event-db
  ::mint
- (fn [db [_ hash]]
-   (let [{:keys [:web3 :contract :network-address]} db]
+ (fn [db [_]]
+   (let [{:keys [:web3 :contract :network-address :form]} db
+         {:keys [:new-scoop/image-hash :new-scoop/name
+                 :new-scoop/price :new-scoop/for-sale?]} form
+         price (if-not (empty? price)
+                 (js/parseInt price) 0)]
      (web3-eth/contract-call (:instance contract)
-                             :mint hash  {:gas 4700000
-                                          :gas-price 100000000000
-                                          ;; TODO: Specify value.
-                                          :value 10000000000000000}
+                             :mint (or name "") price (or for-sale? false) image-hash
+                             {:gas 4700000
+                              :gas-price 100000000000
+                              ;; TODO: Specify value.
+                              :value 10000000000000000}
                              (fn [err tx-hash]
                                (if err
                                  (js/console.log err)
                                  (wait-for-mined web3 tx-hash
                                                  #(js/console.log "pending")
                                                  #(re-frame/dispatch [::mint-success %]))))))
-   (assoc db :loading? true)))
+   (assoc db :loading? {:message "Minting..."})))
 
 (re-frame/reg-event-db
  ::mint-success
  (fn [db [_ res]]
    (re-frame/dispatch [::fetch-scoops (:my-address db)])
-   (assoc db :loading? false)))
+   (dissoc db :loading? :form)))
 
 (re-frame/reg-event-db
  ::add-scoop-tag
@@ -257,7 +269,7 @@
      (.then (add buffer)
             (fn [response]
               (re-frame/dispatch [::update-meta id (aget (first response) "hash")]))))
-   (assoc db :loading? true)))
+   (assoc db :loading? {:message "Updating meta info..."})))
 
 (re-frame/reg-event-db
  ::update-meta
@@ -278,4 +290,4 @@
  ::update-meta-success
  (fn [db [_ res]]
    (re-frame/dispatch [::fetch-scoops (:my-address db)])
-   (assoc db :loading? false)))
+   (dissoc db :loading?)))
