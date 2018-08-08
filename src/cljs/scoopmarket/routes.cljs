@@ -25,7 +25,7 @@
   (pushy/set-token! history (bidi/path-for routes route)))
 
 (defmethod ig/init-key ::module
-  [_ {:keys [routes]}]
+  [_ {:keys [routes] :as opts}]
   (app-routes routes))
 
 (defmethod ig/halt-key! ::module
