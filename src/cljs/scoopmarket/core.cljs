@@ -3,6 +3,7 @@
             [re-frame.core :as re-frame]
             [integrant.core :as ig]
             [scoopmarket.events :as events]
+            [scoopmarket.subs :as subs]
             [scoopmarket.views :as views]
             [scoopmarket.config :as config]
             [scoopmarket.routes :as routes]))
@@ -14,25 +15,22 @@
 
 (defonce system (atom nil))
 
-(defmethod ig/init-key ::db
-  [_ _]
-  (re-frame/dispatch-sync [::events/initialize-db]))
-
-(defmethod ig/init-key ::routes
-  [_ _]
-  (routes/app-routes))
 
 (defmethod ig/init-key ::app
-  [_ _]
+  [_ {:keys [routes] :as opts}]
+  (re-frame/dispatch-sync [::events/initialize-db])
   (re-frame/clear-subscription-cache!)
-  (reagent/render [views/main-panel]
+  (reagent/render [views/main-panel opts]
                   (.getElementById js/document "app")))
 
 (def system-conf
-  {::db nil
-   ::routes nil
-   ::app {:db (ig/ref ::db)
-          :routes (ig/ref ::routes)}})
+  {::events/module nil
+   ::subs/module nil
+   ::routes/module {:routes ["/" {""       :mypage
+                                  "market" :market}]
+                    :subs (ig/ref ::subs/module)
+                    :events (ig/ref ::events/module)}
+   ::app {:routes (ig/ref ::routes/module)}})
 
 (defn start []
   (dev-setup)

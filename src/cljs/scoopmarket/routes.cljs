@@ -1,31 +1,33 @@
 (ns scoopmarket.routes
   (:require [bidi.bidi :as bidi]
+            [integrant.core :as ig]
             [pushy.core :as pushy]
             [re-frame.core :as re-frame]
             [scoopmarket.events :as events]))
 
-(def routes ["/" {""       :mypage
-                  "market" :market}])
+(defn app-routes [routes]
+  (letfn [(dispatch-route [matched-route]
+            (let [panel-name (keyword (str (name (:handler matched-route)) "-panel"))]
+              (re-frame/dispatch [::events/set-active-panel panel-name])))
+          (parse-url [url]
+            (when (empty? url)
+              (set! js/window.location (str js/location.pathname "#/")))
+            (let [url (-> url
+                          (clojure.string/split #"&")
+                          (first))]
+              (bidi/match-route routes url)))]
+    (let [history (pushy/pushy dispatch-route parse-url)]
+      (.setUseFragment (aget history "history") true)
+      (pushy/start! history)
+      {:history history :routes routes})))
 
-(defn- parse-url [url]
-  (when (empty? url)
-    (set! js/window.location (str js/location.pathname "#/")))
-  (let [url (-> url
-                (clojure.string/split #"&")
-                (first))]
-    (bidi/match-route routes url)))
+(defn go-to-page [{:keys [history routes]} route]
+  (pushy/set-token! history (bidi/path-for routes route)))
 
-(defn- dispatch-route [matched-route]
-  (let [panel-name (keyword (str (name (:handler matched-route)) "-panel"))]
-    (re-frame/dispatch [::events/set-active-panel panel-name])))
+(defmethod ig/init-key ::module
+  [_ {:keys [routes]}]
+  (app-routes routes))
 
-(def history (pushy/pushy dispatch-route parse-url))
-
-(defn app-routes []
-  (.setUseFragment (aget history "history") true)
-  (pushy/start! history))
-
-(def url-for (partial bidi/path-for routes))
-
-(defn go-to-page [route]
-  (pushy/set-token! history (url-for route)))
+(defmethod ig/halt-key! ::module
+  [_ {:keys [history]}]
+  (pushy/stop! history))

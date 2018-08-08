@@ -182,7 +182,7 @@
                          :className "transition"}
          [(panels @active-panel) mobile?]]]])))
 
-(defn main-panel []
+(defn main-panel [opts]
   (let [sidebar-opened (re-frame/subscribe [::subs/sidebar-opened])]
     [:div
      [dimmer]
