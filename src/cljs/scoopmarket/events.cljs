@@ -1,23 +1,14 @@
 (ns scoopmarket.events
   (:require [re-frame.core :as re-frame]
             [integrant.core :as ig]
-            [scoopmarket.config :as conf]
+            [scoopmarket.uport :as uport]
             [day8.re-frame.http-fx]
             [district0x.re-frame.web3-fx]
             [ajax.core :as ajax]
-            [ajax.protocols :as protocol]
-            [cljsjs.web3]
             [cljs-web3.core :as web3]
             [cljs-web3.eth :as web3-eth]
-            [cljsjs.moment]
-            [goog.string :as gstring]
-            [goog.string.format]
             [cljsjs.buffer]
             [clojure.core.async :refer [go <! timeout]]))
-
-(def is-mnid? (aget js/window "uportconnect" "MNID" "isMNID"))
-(def encode (aget js/window "uportconnect" "MNID" "encode"))
-(def decode (aget js/window "uportconnect" "MNID" "decode"))
 
 (defn wait-for-mined [web3 tx-hash pending-cb success-cb]
   (letfn [(polling-loop []
@@ -37,33 +28,51 @@
     (wait-for-mined {:block-number nil})))
 
 (defmethod ig/init-key ::module [_ _]
-  [(re-frame/reg-event-fx
+  [(re-frame/reg-event-db
     ::initialize-db
-    (fn [{:keys [db]} [_ initial-db]]
-      (let [ipfs-hash (.. js/document
-                          (querySelector "meta[name=ipfs-hash]"))]
-        {:db initial-db
+    (fn [_ [_ initial-db]]
+      (re-frame/dispatch [::fetch-abi])
+      initial-db))
+
+   (re-frame/reg-event-fx
+    ::fetch-abi
+    (fn [{:keys [db]} _]
+      (let [contract-uri (get-in db [:web3 :contract :uri])]
+        {:db db
          :http-xhrio {:method :get
-                      :uri (if ipfs-hash
-                             (gstring/format "/ipfs/%s/contracts/%s.json"
-                                             (.getAttribute ipfs-hash "content")
-                                             (get-in initial-db [:contract :name]))
-                             (gstring/format "/contracts/%s.json"
-                                             (get-in initial-db [:contract :name])))
+                      :uri contract-uri
                       :timeout 6000
                       :response-format (ajax/json-response-format {:keywords? true})
                       :on-success [::abi-loaded]
                       :on-failure [::api-failure]}})))
 
    (re-frame/reg-event-db
+    ::abi-loaded
+    (fn [db [_ {:keys [abi networks]}]]
+      (re-frame/dispatch [::generate-contract-instance])
+      (let [network-id (keyword (str (get-in db [:web3 :network-id])))
+            address (-> networks network-id :address)]
+        (-> db
+            (assoc-in [:web3 :contract :abi] abi)
+            (assoc-in [:web3 :contract :networks] networks)
+            (assoc-in [:web3 :contract :address] address)))))
+
+   (re-frame/reg-event-db
+    ::generate-contract-instance
+    (fn [db [_ _]]
+      (let [{:keys [abi address]} (get-in db [:web3 :contract])]
+        (if-let [web3-instance (get-in db [:web3 :instance])]
+          (let [contract-instance (web3-eth/contract-at web3-instance abi address)]
+            (re-frame/dispatch [::fetch-scoops (get-in db [:web3 :my-address])])
+            (-> db
+                (assoc-in [:web3 :contract :instance] contract-instance)
+                (dissoc :loading?)))
+          (-> db (dissoc :loading?))))))
+
+   (re-frame/reg-event-db
     ::connect-uport
     (fn [db _]
-      (let [Connect (aget js/window "uportconnect" "Connect")
-            SimpleSigner (aget js/window "uportconnect" "SimpleSigner")
-            uport (Connect. "Kazuki's new app"
-                            (clj->js {:clientId "2ongzbaHaEopuxDdxrCvU1XZqWt16oir144"
-                                      :network "rinkeby"
-                                      :signer (SimpleSigner "f5dc5848640a565994f9889d9ddda443a2fcf4c3d87aef3a74c54c4bcadc8ebd")}))]
+      (let [uport (get-in db [:uport :instance])]
         (.then
          (.requestCredentials uport
                               (clj->js {:requested ["name" "avatar" "address"]
@@ -71,59 +80,27 @@
          (fn [cred err]
            (if err
              (js/console.err err)
-             (re-frame/dispatch [::request-credential-success (js->clj cred
-                                                                       :keywordize-keys true)]))))
-        (assoc db
-               :uport uport
-               :abi-loaded false
-               :my-address nil
-               :loading? nil))))
+             (re-frame/dispatch [::request-credential-success
+                                 (js->clj cred :keywordize-keys true)]))))
+        db)))
 
    (re-frame/reg-event-db
     ::request-credential-success
     (fn [db [_ credential]]
-      (re-frame/dispatch [::abi-loaded (:contract db)])
+      (re-frame/dispatch [::generate-contract-instance])
       (let [{:keys [:address :avatar]} credential
-            uport (:uport db)
-            address (when (is-mnid? address)
-                      (aget (decode address) "address"))]
-        (assoc db
-               :web3 (.getWeb3 uport)
-               :credential credential
-               :network-address address
-               :my-address address))))
-
-   (re-frame/reg-event-db
-    ::abi-loaded
-    (fn [db [_ {:keys [abi networks]}]]
-      (if (:web3 db)
-        (let [web3 (:web3 db)
-              network-id (keyword (str conf/network-id))
-              ;; TODO: Specify network ID.
-              address (-> networks network-id :address)
-              instance (web3-eth/contract-at web3 abi address)]
-          (re-frame/dispatch [::fetch-scoops (:my-address db)])
-          (-> db
-              (assoc-in [:contract :abi] abi)
-              (assoc-in [:contract :networks] networks)
-              (assoc-in [:contract :address] address)
-              (assoc-in [:contract :instance] instance)
-              (assoc :is-rinkeby? (or (some-> (:web3 db)
-                                              (aget "currentProvider")
-                                              (aget "publicConfigStore")
-                                              (aget "_state")
-                                              (aget "networkVersion")
-                                              (= "4" ))
-                                      (some-> (:uport db)
-                                              (aget "network")
-                                              (aget "id")
-                                              (= "0x4"))))
-              (assoc :abi-loaded true)
-              (dissoc :loading?)))
+            uport (get-in db [:uport :instance])
+            my-address (when (uport/is-mnid? address)
+                         (aget (uport/decode address) "address"))
+            is-rinkeby? (some-> (:uport db)
+                                (aget "network")
+                                (aget "id")
+                                (= "0x4"))]
         (-> db
-            (assoc-in [:contract :abi] abi)
-            (assoc-in [:contract :networks] networks)
-            (dissoc :loading?)))))
+            (assoc-in [:web3 :instance] (.getWeb3 uport))
+            (assoc-in [:web3 :my-address] my-address)
+            (assoc-in [:web3 :is-rinkeby?] is-rinkeby?)
+            (assoc-in [:credential] credential)))))
 
    (re-frame/reg-event-db
     ::toggle-sidebar
@@ -147,8 +124,8 @@
    (re-frame/reg-event-fx
     ::fetch-scoops
     (fn [{:keys [db]} [_ address]]
-      {:web3/call {:web3 (:web3 db)
-                   :fns [{:instance (get-in db [:contract :instance])
+      {:web3/call {:web3 (get-in db [:web3 :instance])
+                   :fns [{:instance (get-in db [:web3 :contract :instance])
                           :fn :scoops-of
                           :args [address]
                           :on-success [::fetch-scoops-success]
@@ -165,8 +142,8 @@
    (re-frame/reg-event-fx
     ::fetch-scoop
     (fn [{:keys [db]} [_ id]]
-      {:web3/call {:web3 (:web3 db)
-                   :fns [{:instance (get-in db [:contract :instance])
+      {:web3/call {:web3 (get-in db [:web3 :instance])
+                   :fns [{:instance (get-in db [:web3 :contract :instance])
                           :fn :scoop
                           :args [id]
                           :on-success [::fetch-scoop-success]
@@ -217,12 +194,12 @@
    (re-frame/reg-event-db
     ::mint
     (fn [db [_]]
-      (let [{:keys [:web3 :contract :network-address :form]} db
+      (let [{:keys [:web3 :form]} db
             {:keys [:new-scoop/image-hash :new-scoop/name
                     :new-scoop/price :new-scoop/for-sale?]} form
             price (if-not (empty? price)
                     (js/parseInt price) 0)]
-        (web3-eth/contract-call (:instance contract)
+        (web3-eth/contract-call (get-in web3 [:contract :instance])
                                 :mint (or name "") price (or for-sale? false) image-hash
                                 {:gas 4700000
                                  :gas-price 100000000000
@@ -231,7 +208,7 @@
                                 (fn [err tx-hash]
                                   (if err
                                     (js/console.log err)
-                                    (wait-for-mined web3 tx-hash
+                                    (wait-for-mined (:instance web3) tx-hash
                                                     #(js/console.log "pending")
                                                     #(re-frame/dispatch [::mint-success %]))))))
       (assoc db :loading? {:message "Minting..."})))
@@ -239,7 +216,7 @@
    (re-frame/reg-event-db
     ::mint-success
     (fn [db [_ res]]
-      (re-frame/dispatch [::fetch-scoops (:my-address db)])
+      (re-frame/dispatch [::fetch-scoops (get-in db [:web3 :my-address])])
       (dissoc db :loading? :form)))
 
    (re-frame/reg-event-db
@@ -270,27 +247,27 @@
         (.then (add buffer)
                (fn [response]
                  (re-frame/dispatch [::update-meta id (aget (first response) "hash")]))))
-      (assoc db :loading? {:message "Updating meta info..."})))
+      (assoc db :loading? {:message "Uploading meta info..."})))
 
    (re-frame/reg-event-db
     ::update-meta
     (fn [db [_ id hash]]
-      (let [{:keys [:web3 :contract :network-address]} db]
-        (web3-eth/contract-call (:instance contract)
+      (let [{:keys [:web3]} db]
+        (web3-eth/contract-call (get-in web3 [:contract :instance])
                                 :set-token-meta-data-uri
                                 id hash
                                 {:gas 4700000
                                  :gas-price 100000000000}
                                 (fn [err tx-hash]
-                                  (wait-for-mined web3 tx-hash
+                                  (wait-for-mined (:instance web3) tx-hash
                                                   #(js/console.log "pending")
                                                   #(re-frame/dispatch [::update-meta-success %]))))
-        (assoc db :loading? true))))
+        (assoc db :loading? {:message "Updating meta info..."}))))
 
    (re-frame/reg-event-db
     ::update-meta-success
     (fn [db [_ res]]
-      (re-frame/dispatch [::fetch-scoops (:my-address db)])
+      (re-frame/dispatch [::fetch-scoops (get-in db [:web3 :my-address])])
       (dissoc db :loading?)))])
 
 (defmethod ig/halt-key! ::module [_ _]

@@ -14,16 +14,6 @@
       (:sidebar-opened db)))
 
    (re-frame/reg-sub
-    ::abi-loaded
-    (fn [db]
-      (:abi-loaded db)))
-
-   (re-frame/reg-sub
-    ::my-address
-    (fn [db]
-      (:my-address db)))
-
-   (re-frame/reg-sub
     ::loading?
     (fn [db]
       (:loading? db)))
@@ -34,6 +24,11 @@
       (:form db)))
 
    (re-frame/reg-sub
+    ::web3
+    (fn [db]
+      (:web3 db)))
+
+   (re-frame/reg-sub
     ::scoops
     (fn [db]
       (:scoops db)))
@@ -41,12 +36,7 @@
    (re-frame/reg-sub
     ::credential
     (fn [db]
-      (:credential db)))
-
-   (re-frame/reg-sub
-    ::is-rinkeby?
-    (fn [db]
-      (:is-rinkeby? db)))])
+      (:credential db)))])
 
 (defmethod ig/halt-key! ::module [_ _]
   (re-frame/clear-sub))

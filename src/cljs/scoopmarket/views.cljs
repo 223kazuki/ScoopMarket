@@ -3,7 +3,6 @@
             [reagent.core :as reagent]
             [scoopmarket.subs :as subs]
             [scoopmarket.events :as events]
-            [scoopmarket.config :as conf]
             [soda-ash.core :as sa]
             [cljsjs.semantic-ui-react]
             [cljsjs.react-transition-group]
@@ -100,7 +99,7 @@
   (reagent/create-class
    {:reagent-render
     (fn []
-      (let [abi-loaded (re-frame/subscribe [::subs/abi-loaded])
+      (let [web3 (re-frame/subscribe [::subs/web3])
             scoops (re-frame/subscribe [::subs/scoops])
             credential (re-frame/subscribe [::subs/credential])
             form (re-frame/subscribe [::subs/form])]
@@ -140,7 +139,7 @@
                           :on-change input-text-handler}]]]
                [sa/Divider {:hidden true}]
                [sa/Button {:on-click #(re-frame/dispatch [::events/mint])} "Mint"]]]]]
-           (when @abi-loaded
+           (when @web3
              [scoop-uploader {:upload-handler
                               (fn [reader]
                                 (re-frame/dispatch [::events/upload-image reader]))}])
@@ -168,19 +167,22 @@
 
 (defn main-container [mobile?]
   (let [active-panel (re-frame/subscribe [::subs/active-panel])
-        abi-loaded (re-frame/subscribe [::subs/abi-loaded])
-        is-rinkeby? (re-frame/subscribe [::subs/is-rinkeby?])]
-    (if (and (not conf/debug?) @abi-loaded (not @is-rinkeby?))
-      [sa/Modal {:size "large" :open true}
-       [sa/ModalContent
-        [:div "You must use Rinkeby test network!"]]]
-      [sa/Container {:className "mainContainer" :style {:marginTop "7em"}}
-       [transition-group
-        [css-transition {:key @active-panel
-                         :classNames "pageChange"
-                         :timeout 500
-                         :className "transition"}
-         [(panels @active-panel) mobile?]]]])))
+        web3 (re-frame/subscribe [::subs/web3])]
+    (if (nil? @web3)
+      (do
+        (re-frame/dispatch [::events/connect-uport])
+        [:div])
+      (if (not (:is-rinkeby? @web3))
+        [sa/Modal {:size "large" :open true}
+         [sa/ModalContent
+          [:div "You must use Rinkeby test network!"]]]
+        [sa/Container {:className "mainContainer" :style {:marginTop "7em"}}
+         [transition-group
+          [css-transition {:key @active-panel
+                           :classNames "pageChange"
+                           :timeout 500
+                           :className "transition"}
+           [(panels @active-panel) mobile?]]]]))))
 
 (defn main-panel [opts]
   (let [sidebar-opened (re-frame/subscribe [::subs/sidebar-opened])]
