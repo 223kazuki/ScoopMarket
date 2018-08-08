@@ -18,9 +18,6 @@
                  [day8.re-frame/http-fx "0.1.6"]
                  [district0x.re-frame/web3-fx "1.0.5" :exclusions [[cljs-web3]]]]
   :plugins [[lein-cljsbuild "1.1.7"]]
-  ;; :main ^:skip-aot scoopmarket.main
-  ;; :uberjar-name  "scoopmarket-standalone.jar"
-  ;; :resource-paths ["resources" "target/resources"]
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"
                                     "test/js"]
   :figwheel {:css-dirs ["resources/public/css"]}
