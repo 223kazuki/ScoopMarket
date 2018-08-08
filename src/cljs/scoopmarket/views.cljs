@@ -113,32 +113,33 @@
            [sa/Label {:as "label" :class "button" :size "large"
                       :on-click #(re-frame/dispatch [::events/connect-uport])}
             [sa/Icon {:name "id card"}] "Connect to uPort"]
-           (when (:new-scoop/image-hash @form)
-             [sa/Modal {:open true :size "small"}
-              [sa/ModalContent
-               [sa/Segment
-                [sa/Form
-                 [sa/FormField
-                  [:label "Scoop Name"]
-                  [:input {:placeholder "My Scoop"
-                           :name "new-scoop/name"
-                           :value (:new-scoop/name @form "")
-                           :on-change input-text-handler}]]
-                 [sa/FormField
-                  [sa/Checkbox {:name "new-scoop/for-sale?"
-                                :on-change check-handler
-                                :checked (:new-scoop/for-sale? @form false)
-                                :label "For sale?"}]]
-                 [sa/FormField
-                  [:label "Scoop Price"]
-                  [:input {:placeholder "1.0 eth"
-                           :name "new-scoop/price"
-                           :type "number"
-                           :disabled (not (:new-scoop/for-sale? @form false))
-                           :value (:new-scoop/price @form "")
-                           :on-change input-text-handler}]]]
-                [sa/Divider {:hidden true}]
-                [sa/Button {:on-click #(re-frame/dispatch [::events/mint])} "Mint"]]]])
+           [sa/Transition {:visible (not (nil? (:new-scoop/image-hash @form)))
+                           :animation "fade up" :duration 500 :unmount-on-hide true}
+            [sa/Modal {:open true :size "small"}
+             [sa/ModalContent
+              [sa/Segment
+               [sa/Form
+                [sa/FormField
+                 [:label "Scoop Name"]
+                 [:input {:placeholder "My Scoop"
+                          :name "new-scoop/name"
+                          :value (:new-scoop/name @form "")
+                          :on-change input-text-handler}]]
+                [sa/FormField
+                 [sa/Checkbox {:name "new-scoop/for-sale?"
+                               :on-change check-handler
+                               :checked (:new-scoop/for-sale? @form false)
+                               :label "For sale?"}]]
+                [sa/FormField
+                 [:label "Scoop Price"]
+                 [:input {:placeholder "1.0 eth"
+                          :name "new-scoop/price"
+                          :type "number"
+                          :disabled (not (:new-scoop/for-sale? @form false))
+                          :value (:new-scoop/price @form "")
+                          :on-change input-text-handler}]]]
+               [sa/Divider {:hidden true}]
+               [sa/Button {:on-click #(re-frame/dispatch [::events/mint])} "Mint"]]]]]
            (when @abi-loaded
              [scoop-uploader {:upload-handler
                               (fn [reader]
