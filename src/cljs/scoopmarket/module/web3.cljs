@@ -1,8 +1,8 @@
-(ns scoopmarket.web3
+(ns scoopmarket.module.web3
   (:require [integrant.core :as ig]
             [cljs-web3.core :as web3]))
 
-(defmethod ig/init-key ::module [_ {:keys [contract-uri dev network-id]}]
+(defmethod ig/init-key :scoopmarket.module.web3 [_ {:keys [contract-uri dev network-id]}]
   (when-let [instance (aget js/window "web3")]
     {:instance instance
      :network-id network-id
@@ -16,4 +16,4 @@
                       dev)
      :contract {:uri contract-uri}}))
 
-(defmethod ig/halt-key! ::module [_ _])
+(defmethod ig/halt-key! :scoopmarket.module.web3 [_ _])

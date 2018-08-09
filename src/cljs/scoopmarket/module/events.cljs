@@ -1,7 +1,7 @@
-(ns scoopmarket.events
+(ns scoopmarket.module.events
   (:require [re-frame.core :as re-frame]
             [integrant.core :as ig]
-            [scoopmarket.uport :as uport]
+            [scoopmarket.module.uport :as uport]
             [day8.re-frame.http-fx]
             [district0x.re-frame.web3-fx]
             [ajax.core :as ajax]
@@ -27,7 +27,7 @@
                 (polling-loop))))]
     (wait-for-mined {:block-number nil})))
 
-(defmethod ig/init-key ::module [_ _]
+(defmethod ig/init-key :scoopmarket.module.events [_ _]
   [(re-frame/reg-event-db
     ::initialize-db
     (fn [_ [_ initial-db]]
@@ -270,5 +270,5 @@
       (re-frame/dispatch [::fetch-scoops (get-in db [:web3 :my-address])])
       (dissoc db :loading?)))])
 
-(defmethod ig/halt-key! ::module [_ _]
+(defmethod ig/halt-key! :scoopmarket.module.events [_ _]
   (re-frame/clear-event))

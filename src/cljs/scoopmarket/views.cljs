@@ -1,8 +1,8 @@
 (ns scoopmarket.views
   (:require [re-frame.core :as re-frame]
             [reagent.core :as reagent]
-            [scoopmarket.subs :as subs]
-            [scoopmarket.events :as events]
+            [scoopmarket.module.subs :as subs]
+            [scoopmarket.module.events :as events]
             [soda-ash.core :as sa]
             [cljsjs.semantic-ui-react]
             [cljsjs.react-transition-group]

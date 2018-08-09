@@ -1,9 +1,9 @@
-(ns scoopmarket.routes
+(ns scoopmarket.module.routes
   (:require [bidi.bidi :as bidi]
             [integrant.core :as ig]
             [pushy.core :as pushy]
             [re-frame.core :as re-frame]
-            [scoopmarket.events :as events]))
+            [scoopmarket.module.events :as events]))
 
 (defn app-routes [routes]
   (letfn [(dispatch-route [{:keys [:handler :route-params]}]
@@ -24,10 +24,10 @@
 (defn go-to-page [{:keys [history routes]} route]
   (pushy/set-token! history (bidi/path-for routes route)))
 
-(defmethod ig/init-key ::module
+(defmethod ig/init-key :scoopmarket.module.routes
   [_ {:keys [routes] :as opts}]
   (app-routes routes))
 
-(defmethod ig/halt-key! ::module
+(defmethod ig/halt-key! :scoopmarket.module.routes
   [_ {:keys [history]}]
   (pushy/stop! history))
