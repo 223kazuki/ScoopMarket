@@ -92,7 +92,7 @@
             uport (get-in db [:uport :instance])
             my-address (when (uport/is-mnid? address)
                          (aget (uport/decode address) "address"))
-            is-rinkeby? (some-> (:uport db)
+            is-rinkeby? (some-> (get-in db [:uport :instance])
                                 (aget "network")
                                 (aget "id")
                                 (= "0x4"))]
