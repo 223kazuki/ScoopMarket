@@ -30,11 +30,12 @@
                   :port 5001}
    ::events/module {}
    ::subs/module {}
-   ::routes/module {:routes ["/" {""       :mypage
-                                  "market" :market}]
+   ::routes/module {:routes ["/" {""                       :mypage
+                                  ["verify/" [#"\d+" :id]] :verify
+                                  "market"                 :market}]
                     :subs (ig/ref ::subs/module)
                     :events (ig/ref ::events/module)}
-   ::app/module {:initial-db {:active-panel :none
+   ::app/module {:initial-db {:active-page {:panel :none}
                               :sidebar-opened false
                               :loading? true
                               :web3 (ig/ref ::web3/module)

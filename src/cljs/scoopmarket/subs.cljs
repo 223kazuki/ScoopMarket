@@ -4,9 +4,9 @@
 
 (defmethod ig/init-key ::module [_ _]
   [(re-frame/reg-sub
-    ::active-panel
+    ::active-page
     (fn [db]
-      (:active-panel db)))
+      (:active-page db)))
 
    (re-frame/reg-sub
     ::sidebar-opened

@@ -151,11 +151,36 @@
               [sa/GridColumn
                [scoop-panel {:config {:scoop scoop}}]])]])))}))
 
+(defn verify-panel [route-params]
+  (let [{:keys [:id]} route-params
+        scoops (re-frame/subscribe [::subs/scoops])]
+    (reagent/create-class
+     {:component-did-mount
+      #(let [scoop (get-in @scoops [(keyword (str id))])]
+         (when-not (:image-hash scoop)
+           (re-frame/dispatch [::events/fetch-scoop id])))
+
+      :reagent-render
+      (fn []
+        (let [scoop (get-in @scoops [(keyword (str id))])
+              {:keys [:id :name :timestamp :image-hash :price :for-sale? :author]} scoop
+              image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)]
+          [sa/Segment
+           [sa/Card
+            [:img {:style {:width "100%"} :src image-uri}]
+            [sa/CardContent
+             [sa/Header {:as "h3"} name]
+             ;; TODO: Show owner
+             (str "Price : " price "eth : ") (if for-sale? "For sale" "Not for sale") [:br]
+             (str "Uploaded : " (.format (.unix js/moment timestamp)
+                                         "YYYY/MM/DD HH:mm:ss"))]]]))})))
+
 (defn market-panel [] [:div "This is market."])
 (defn none-panel   [] [:div])
 
-(defmulti  panels identity)
+(defmulti  panels :panel)
 (defmethod panels :mypage-panel [] #'mypage-panel)
+(defmethod panels :verify-panel [] #'verify-panel)
 (defmethod panels :market-panel [] #'market-panel)
 (defmethod panels :none [] #'none-panel)
 (defmethod panels :default [] [:div "This page does not exist."])
@@ -166,23 +191,28 @@
   (reagent/adapt-react-class js/ReactTransitionGroup.CSSTransition))
 
 (defn main-container [mobile?]
-  (let [active-panel (re-frame/subscribe [::subs/active-panel])
+  (let [active-page (re-frame/subscribe [::subs/active-page])
         web3 (re-frame/subscribe [::subs/web3])]
-    (if (nil? @web3)
+    (cond
+      (nil? @web3)
       (do
         (re-frame/dispatch [::events/connect-uport])
         [:div])
-      (if (not (:is-rinkeby? @web3))
-        [sa/Modal {:size "large" :open true}
-         [sa/ModalContent
-          [:div "You must use Rinkeby test network!"]]]
+
+      (not (:is-rinkeby? @web3))
+      [sa/Modal {:size "large" :open true}
+       [sa/ModalContent
+        [:div "You must use Rinkeby test network!"]]]
+
+      :else
+      (when (get-in @web3 [:contract :instance])
         [sa/Container {:className "mainContainer" :style {:marginTop "7em"}}
          [transition-group
-          [css-transition {:key @active-panel
+          [css-transition {:key @active-page
                            :classNames "pageChange"
                            :timeout 500
                            :className "transition"}
-           [(panels @active-panel) mobile?]]]]))))
+           [(panels @active-page) (:route-params @active-page)]]]]))))
 
 (defn main-panel [opts]
   (let [sidebar-opened (re-frame/subscribe [::subs/sidebar-opened])]

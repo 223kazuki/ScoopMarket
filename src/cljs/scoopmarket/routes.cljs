@@ -6,9 +6,9 @@
             [scoopmarket.events :as events]))
 
 (defn app-routes [routes]
-  (letfn [(dispatch-route [matched-route]
-            (let [panel-name (keyword (str (name (:handler matched-route)) "-panel"))]
-              (re-frame/dispatch [::events/set-active-panel panel-name])))
+  (letfn [(dispatch-route [{:keys [:handler :route-params]}]
+            (let [panel-name (keyword (str (name handler) "-panel"))]
+              (re-frame/dispatch [::events/set-active-page panel-name route-params])))
           (parse-url [url]
             (when (empty? url)
               (set! js/window.location (str js/location.pathname "#/")))

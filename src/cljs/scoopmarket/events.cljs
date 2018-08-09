@@ -108,10 +108,10 @@
       (update-in db [:sidebar-opened] not)))
 
    (re-frame/reg-event-db
-    ::set-active-panel
-    (fn [db [_ active-panel]]
+    ::set-active-page
+    (fn [db [_ panel route-params]]
       (-> db
-          (assoc :active-panel active-panel))))
+          (assoc :active-page {:panel panel :route-params route-params}))))
 
    (re-frame/reg-event-db
     ::api-failure
