@@ -17,7 +17,6 @@
                  [soda-ash "0.78.2" :exclusions [[cljsjs/react]]]
                  [day8.re-frame/http-fx "0.1.6"]
                  [district0x.re-frame/web3-fx "1.0.5" :exclusions [[cljs-web3]]]]
-  :source-paths ["src/clj"]
   :plugins [[lein-cljsbuild "1.1.7"]]
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"
                                     "test/js"]
@@ -44,7 +43,7 @@
   :cljsbuild
   {:builds
    [{:id "dev"
-     :source-paths ["src/cljs"]
+     :source-paths ["src"]
      :figwheel     {:on-jsload "scoopmarket.core/reset"}
      :compiler     {:main                 scoopmarket.core
                     :output-to            "resources/public/js/compiled/app.js"
@@ -57,14 +56,14 @@
                                            "day8.re_frame.tracing.trace_enabled_QMARK_" true}
                     :external-config      {:devtools/config {:features-to-install :all}}}}
     {:id "min"
-     :source-paths ["src/cljs"]
+     :source-paths ["src"]
      :compiler     {:main            scoopmarket.core
                     :output-to       "resources/public/js/compiled/app.js"
                     :optimizations   :advanced
                     :closure-defines {goog.DEBUG false}
                     :pretty-print    false}}
     {:id "test"
-     :source-paths ["src/cljs" "test/cljs"]
+     :source-paths ["src" "test"]
      :compiler     {:main          scoopmarket.runner
                     :output-to     "resources/public/js/compiled/test.js"
                     :output-dir    "resources/public/js/compiled/test/out"
