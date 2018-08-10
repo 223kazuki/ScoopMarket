@@ -15,6 +15,7 @@
         {:keys [:id :meta]} scoop
         {:keys [:meta-update-handler]} handlers
         form (reagent/atom meta)
+        editing (reagent/atom false)
         Buffer js/buffer.Buffer
         input-text-handler (fn [el]
                              (let [n (aget (.-target el) "name")
@@ -31,28 +32,32 @@
                         (ipfs/upload-data ipfs buffer meta-update-handler)))]
     (fn []
       (let [{:keys [:new-tag :tags]} @form]
-        [sa/Segment
+        [:<>
          (for [tag tags]
            ^{:key tag}
            [sa/Label {:style {:margin-top "3px"}}
             tag [sa/Icon {:name "delete"
                           :on-click #(delete-tag tag)}]])
-         [sa/Input {:icon (clj->js
-                           {:name "tags" :circular true :link true
-                            :onClick
-                            #(when-not (empty? new-tag)
-                               (add-tag new-tag))})
-                    :style {:width "100%" :margin-top "5px"}
-                    :placeholder "Enter tags"
-                    :name "new-tag"
-                    :value (or new-tag "")
-                    :on-change input-text-handler}]
-         [sa/Divider]
-         [sa/Button {:on-click upload-meta} "Update"]]))))
+         [sa/Icon {:name "edit" :circular true :style {:margin-left "5px"}
+                   :on-click #(swap! editing not)}]
+         (when @editing
+           [:<>
+            [sa/Input {:icon (clj->js
+                              {:name "tags" :circular true :link true
+                               :onClick
+                               #(when-not (empty? new-tag)
+                                  (add-tag new-tag))})
+                       :style {:width "100%" :margin-top "5px"}
+                       :placeholder "Enter tags"
+                       :name "new-tag"
+                       :value (or new-tag "")
+                       :on-change input-text-handler}]
+            [sa/Button {:on-click upload-meta :style {:margin-top "5px"}} "Update meta data"]])]))))
 
 (defn scoop-card [{:keys [:configs :handlers]}]
   (let [{:keys [:scoop :ipfs :web3]} configs
-        {:keys [:id :name :timestamp :image-hash :price :for-sale? :author]} scoop]
+        {:keys [:id :name :timestamp :image-hash :price :for-sale? :author :meta]} scoop
+        modal-open? (reagent/atom false)]
     (reagent/create-class
      {:component-did-mount
       #(when (nil? image-hash)
@@ -62,23 +67,32 @@
       (fn []
         (when image-hash
           (let [image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)]
-            [sa/Card {:style {:width "100%"}}
-             [sa/Modal {:close-icon true
-                        :size "large"
-                        :trigger (js/React.createElement
-                                  "img" (clj->js {:style {:width "100%"}
-                                                  :src image-uri}))}
-              [sa/ModalContent
-               [:img {:style {:width "100%"} :src image-uri}]]]
-             [sa/CardContent
-              [sa/Header {:as "h3"} name]
-              (str "Price : " price "eth : ") (if for-sale? "For sale" "Not for sale") [:br]
-              (str "Uploaded : " (.format (.unix js/moment timestamp)
-                                          "YYYY/MM/DD HH:mm:ss"))
-              [meta-editor {:configs {:scoop scoop :ipfs ipfs}
-                            :handlers {:meta-update-handler
-                                       (fn [meta-hash]
-                                         (re-frame/dispatch [::events/update-meta web3 id meta-hash]))}}]]])))})))
+            [:<>
+             [sa/Transition {:visible @modal-open?
+                             :animation "fade up" :duration 500 :unmount-on-hide true}
+              [sa/Modal {:close-icon true :size "large"
+                         :open @modal-open? :on-close #(swap! modal-open? not)}
+               [sa/ModalContent
+                [:img {:style {:width "100%"} :src image-uri}]]]]
+             [sa/Card {:style {:width "100%"}}
+              [:div {:on-click #(swap! modal-open? not)
+                     :style {:display "table-cell" :width "100%" :height "220px"
+                             :text-align "center" :vertical-align "middle"}}
+               [:img {:src image-uri :style {:height "100%" :max-height "200px"
+                                             :max-width "100%"}}]]
+              [sa/CardContent
+               [sa/CardHeader [:a {:href (str "/verify/" id)} name]]
+               [sa/CardMeta
+                [:span.date (str "Uploaded : " (.format (.unix js/moment timestamp)
+                                                        "YYYY/MM/DD HH:mm:ss"))] [:br]
+                [:span (if-not for-sale?
+                         "Not for sale"
+                         (str "For sale : "  price " wei"))]]]
+              [sa/CardContent
+               [meta-editor {:configs {:scoop scoop :ipfs ipfs}
+                             :handlers {:meta-update-handler
+                                        (fn [meta-hash]
+                                          (re-frame/dispatch [::events/update-meta web3 id meta-hash]))}}]]]])))})))
 
 (defn image-uploader [{:keys [:configs :handlers]}]
   (let [id (random-uuid)
@@ -86,7 +100,7 @@
     (fn []
       [:<>
        [sa/Label {:htmlFor id :as "label" :class "button" :size "large"}
-        [sa/Icon {:name "upload"}] "Upload"]
+        [sa/Icon {:name "photo"}] "Upload Scoop"]
        [:input {:id id :type "file" :style {:display "none"}
                 :accept "image/*" :capture "camera"
                 :on-change (fn []
@@ -157,32 +171,39 @@
                        :on-click #(scoop-upload-handler @form)} "Mint"]]]]]])))
 
 (defn mypage-panel []
-  (fn []
+  (reagent/create-class
+   {:component-did-mount
+    #(let [web3 @(re-frame/subscribe [::subs/web3])]
+       (re-frame/dispatch [::events/fetch-scoops web3]))
+
+    :reagent-render
     (let [scoops (re-frame/subscribe [::subs/scoops])
           credential (re-frame/subscribe [::subs/credential])
-          web3 @(re-frame/subscribe [::subs/web3])
-          ipfs @(re-frame/subscribe [::subs/ipfs])
-          uport @(re-frame/subscribe [::subs/uport])]
-      (when-not @scoops (re-frame/dispatch [::events/fetch-scoops web3]))
-      (let [{:keys [avatar name]} @credential]
-        [:div
-         [sa/Header {:as "h1"} (if name name "This is my page.")]
-         (when-let [image-uri (get-in @credential [:avatar :uri])]
-           [:img {:src image-uri}])
-         [sa/Divider {:hidden true}]
-         [sa/Label {:as "label" :class "button" :size "large"
-                    :on-click #(re-frame/dispatch [::events/connect-uport uport web3])}
-          [sa/Icon {:name "id card"}] "Connect to uPort"]
-         [scoop-uploader {:configs {:ipfs ipfs}
-                          :handlers {:scoop-upload-handler
-                                     (fn [scoop]
-                                       (re-frame/dispatch [::events/mint web3 scoop]))}}]
-         [sa/Divider]
-         [sa/Grid {:doubling true :columns 3}
-          (for [[_ scoop] (sort-by key @scoops)]
-            ^{:key scoop}
-            [sa/GridColumn
-             [scoop-card {:configs {:scoop scoop :web3 web3 :ipfs ipfs}}]])]]))))
+          web3 (re-frame/subscribe [::subs/web3])
+          ipfs (re-frame/subscribe [::subs/ipfs])
+          uport (re-frame/subscribe [::subs/uport])]
+      (fn []
+        (let [web3 @web3 ipfs @ipfs uport @uport
+              {:keys [avatar name]} @credential]
+          [:div
+           [sa/Header {:as "h1"} (if name name "My Page")]
+           (when-let [image-uri (:uri avatar)]
+             [:img {:src image-uri}])
+           [sa/Divider {:hidden true}]
+           [scoop-uploader {:configs {:ipfs ipfs}
+                            :handlers {:scoop-upload-handler
+                                       (fn [scoop]
+                                         (re-frame/dispatch [::events/mint web3 scoop]))}}]
+           (when-not @credential
+             [sa/Label {:as "label" :class "button" :size "large"
+                        :on-click #(re-frame/dispatch [::events/connect-uport uport web3])}
+              [sa/Icon {:name "id card"}] "Connect to uPort"])
+           [sa/Divider]
+           [sa/Grid {:doubling true :columns 3}
+            (for [[_ scoop] (sort-by key @scoops)]
+              ^{:key scoop}
+              [sa/GridColumn
+               [scoop-card {:configs {:scoop scoop :web3 web3 :ipfs ipfs}}]])]])))}))
 
 (defn verify-panel [route-params]
   (let [{:keys [:id]} route-params
@@ -197,19 +218,59 @@
       :reagent-render
       (fn []
         (let [scoop (get-in @scoops [(keyword (str id))])
-              {:keys [:id :name :timestamp :image-hash :price :for-sale? :author]} scoop
+              {:keys [:id :name :timestamp :image-hash :price :for-sale? :author :owner]} scoop
               image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)]
-          [sa/Segment
-           [sa/Card
-            [:img {:style {:width "100%"} :src image-uri}]
-            [sa/CardContent
-             [sa/Header {:as "h3"} name]
-             ;; TODO: Show owner
-             (str "Price : " price "eth : ") (if for-sale? "For sale" "Not for sale") [:br]
-             (str "Uploaded : " (.format (.unix js/moment timestamp)
-                                         "YYYY/MM/DD HH:mm:ss"))]]]))})))
+          (when image-hash
+            [:div
+             [sa/Segment {:textAlign "center"}
+              [:img {:style {:width "100%" :max-width "500px"} :src image-uri}]
+              [sa/Header {:as "h1"} name]
+              [sa/CardMeta
+               [:span (str "Uploaded : " (.format (.unix js/moment timestamp)
+                                                  "YYYY/MM/DD HH:mm:ss")
+                           " by ")
+                [:a {:href (str "https://rinkeby.etherscan.io/address/" author)
+                     :target "_blank"} author]]]
+              [sa/CardContent
+               [:span "This scoop is owned by "
+                [:a {:href (str "https://rinkeby.etherscan.io/address/" owner)
+                     :target "_blank"} owner]]]]])))})))
 
-(defn market-panel [] [:div "This is market."])
+(defn market-panel []
+  (reagent/create-class
+   {:component-did-mount
+    #(let [web3 @(re-frame/subscribe [::subs/web3])]
+       (re-frame/dispatch [::events/fetch-scoops web3]))
+
+    :reagent-render
+    (let [scoops (re-frame/subscribe [::subs/scoops])
+          credential (re-frame/subscribe [::subs/credential])
+          web3 (re-frame/subscribe [::subs/web3])
+          ipfs (re-frame/subscribe [::subs/ipfs])
+          uport (re-frame/subscribe [::subs/uport])]
+      (fn []
+        (let [web3 @web3 ipfs @ipfs uport @uport
+              {:keys [avatar name]} @credential]
+          [:div
+           [sa/Header {:as "h1"} (if name name "My Page")]
+           (when-let [image-uri (:uri avatar)]
+             [:img {:src image-uri}])
+           [sa/Divider {:hidden true}]
+           [scoop-uploader {:configs {:ipfs ipfs}
+                            :handlers {:scoop-upload-handler
+                                       (fn [scoop]
+                                         (re-frame/dispatch [::events/mint web3 scoop]))}}]
+           (when-not @credential
+             [sa/Label {:as "label" :class "button" :size "large"
+                        :on-click #(re-frame/dispatch [::events/connect-uport uport web3])}
+              [sa/Icon {:name "id card"}] "Connect to uPort"])
+           [sa/Divider]
+           [sa/Grid {:doubling true :columns 3}
+            (for [[_ scoop] (sort-by key @scoops)]
+              ^{:key scoop}
+              [sa/GridColumn
+               [scoop-card {:configs {:scoop scoop :web3 web3 :ipfs ipfs}}]])]])))}))
+
 (defn none-panel   [] [:div])
 
 (defmulti  panels :panel)
@@ -237,9 +298,7 @@
                     message "Loading...")]]]
      (cond
        (nil? @web3)
-       (do
-         (re-frame/dispatch [::events/connect-uport])
-         [:div])
+       (re-frame/dispatch [::events/connect-uport])
 
        (not (:is-rinkeby? @web3))
        [sa/Modal {:size "large" :open true}

@@ -7,7 +7,8 @@
             [day8.re-frame.http-fx]
             [district0x.re-frame.web3-fx]
             [ajax.core :as ajax]
-            [cljs-web3.eth :as web3-eth]))
+            [cljs-web3.eth :as web3-eth]
+            [meta-merge.core :refer [meta-merge]]))
 
 (defmethod ig/init-key :scoopmarket.module.events [_ _]
   [(re-frame/reg-event-db
@@ -79,10 +80,12 @@
     (fn-traced [db [_ scoops]]
                (assoc db
                       :loading? false
-                      :scoops (->> scoops
-                                   (map #(let [id (first (aget % "c"))]
-                                           (hash-map (keyword (str id)) {:id id})))
-                                   (into {})))))
+                      :scoops (meta-merge
+                               (:scoops db)
+                               (->> scoops
+                                    (map #(let [id (first (aget % "c"))]
+                                            (hash-map (keyword (str id)) {:id id})))
+                                    (into {}))))))
 
    (re-frame/reg-event-fx
     ::fetch-scoop
@@ -97,7 +100,7 @@
    (re-frame/reg-event-db
     ::fetch-scoop-success
     (fn-traced [db [_ scoop]]
-               (let [[id name timestamp image-hash price for-sale? meta-hash author] scoop
+               (let [[id name timestamp image-hash price for-sale? meta-hash author owner requestor] scoop
                      id (first (aget id "c"))
                      price (first (aget price "c"))
                      timestamp (first (aget timestamp "c"))
@@ -110,9 +113,12 @@
                                                         (.toString file "utf8"))
                                                 :keywordize-keys true)]
                               (re-frame/dispatch [::fetch-meta-success id meta]))))))
-                 (update-in db [:scoops (keyword (str id))]
-                            assoc :id id :name name :timestamp timestamp :image-hash image-hash
-                            :price price :for-sale? for-sale? :author author :meta-hash meta-hash))))
+                 (-> db
+                     (dissoc :loading?)
+                     (update-in [:scoops (keyword (str id))]
+                                assoc :id id :name name :timestamp timestamp :image-hash image-hash
+                                :price price :for-sale? for-sale? :author author :meta-hash meta-hash
+                                :owner owner requestor requestor)))))
 
    (re-frame/reg-event-db
     ::fetch-meta-success
@@ -162,7 +168,7 @@
    (re-frame/reg-event-db
     ::update-meta-success
     (fn-traced [db [_ web3 res]]
-               (re-frame/dispatch [::fetch-scoops web3 (:my-address web3)])
+               (re-frame/dispatch [::fetch-scoops web3])
                (dissoc db :loading?)))])
 
 (defmethod ig/halt-key! :scoopmarket.module.events [_ _]
