@@ -19,14 +19,14 @@
       (:loading? db)))
 
    (re-frame/reg-sub
-    ::form
-    (fn [db]
-      (:form db)))
-
-   (re-frame/reg-sub
     ::web3
     (fn [db]
       (:web3 db)))
+
+   (re-frame/reg-sub
+    ::ipfs
+    (fn [db]
+      (:ipfs db)))
 
    (re-frame/reg-sub
     ::scoops

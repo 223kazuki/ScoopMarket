@@ -11,9 +11,9 @@
     (println "dev mode")))
 
 (defmethod ig/init-key :scoopmarket.module.app
-  [_ {:keys [initial-db dev] :as opts}]
+  [_ {:keys [initial-db dev]}]
   (dev-setup dev)
   (re-frame/dispatch-sync [::events/initialize-db initial-db])
   (re-frame/clear-subscription-cache!)
-  (reagent/render [views/main-panel opts]
+  (reagent/render [views/responsible-container]
                   (.getElementById js/document "app")))
