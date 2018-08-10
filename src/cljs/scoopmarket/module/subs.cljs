@@ -29,6 +29,11 @@
       (:ipfs db)))
 
    (re-frame/reg-sub
+    ::uport
+    (fn [db]
+      (:uport db)))
+
+   (re-frame/reg-sub
     ::scoops
     (fn [db]
       (:scoops db)))

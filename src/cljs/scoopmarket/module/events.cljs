@@ -17,39 +17,34 @@
 
    (re-frame/reg-event-db
     ::connect-uport
-    (fn-traced [db _]
-               (let [uport (:uport db)]
-                 (.then
-                  (.requestCredentials uport
-                                       (clj->js {:requested ["name" "avatar" "address"]
-                                                 :notifications true}))
-                  (fn [cred err]
-                    (if err
-                      (js/console.err err)
-                      (re-frame/dispatch [::request-credential-success
-                                          (js->clj cred :keywordize-keys true)]))))
-                 db)))
+    (fn-traced [db [_ uport web3]]
+               (uport/request-credentials
+                uport #(re-frame/dispatch [::request-credential-success uport web3 %]))
+               db))
 
    (re-frame/reg-event-db
     ::request-credential-success
-    (fn-traced [db [_ credential]]
+    (fn-traced [db [_ uport web3 credential]]
                (let [{:keys [:address :avatar]} credential
-                     {:keys [abi networks]} (get-in db [:web3 :contract])
-                     uport (:uport db)
-                     web3-instance (.getWeb3 uport)
-                     contract-instance (web3-eth/contract-at web3-instance abi address)
+                     {:keys [:contract :contract-address :network-id :dev]} web3
+                     {:keys [:abi :networks]} contract
+                     web3-instance (js-invoke uport "getWeb3")
+                     contract-instance (web3-eth/contract-at web3-instance abi contract-address)
                      my-address (when (uport/is-mnid? address)
                                   (aget (uport/decode address) "address"))
-                     is-rinkeby? (some-> (get-in db [:uport :instance])
-                                         (aget "network")
-                                         (aget "id")
-                                         (= "0x4"))]
+                     is-rinkeby? (or (some-> (:uport db)
+                                             (aget "network")
+                                             (aget "id")
+                                             (js/parseInt 16)
+                                             (== network-id))
+                                     dev)]
                  (-> db
                      (assoc-in [:web3 :web3-instance] web3-instance)
                      (assoc-in [:web3 :contract-instance] contract-instance)
                      (assoc-in [:web3 :my-address] my-address)
                      (assoc-in [:web3 :is-rinkeby?] is-rinkeby?)
-                     (assoc :credential credential)))))
+                     (assoc :credential credential)
+                     (dissoc :scoops)))))
 
    (re-frame/reg-event-db
     ::toggle-sidebar
@@ -71,11 +66,11 @@
 
    (re-frame/reg-event-fx
     ::fetch-scoops
-    (fn-traced [{:keys [db]} [_ address]]
-               {:web3/call {:web3 (get-in db [:web3 :web3-instance])
-                            :fns [{:instance (get-in db [:web3 :contract-instance])
+    (fn-traced [{:keys [db]} [_ web3]]
+               {:web3/call {:web3 (:web3-instance web3)
+                            :fns [{:instance (:contract-instance web3)
                                    :fn :scoops-of
-                                   :args [address]
+                                   :args [(:my-address web3)]
                                    :on-success [::fetch-scoops-success]
                                    :on-error [::api-failure]}]}}))
 
@@ -91,9 +86,9 @@
 
    (re-frame/reg-event-fx
     ::fetch-scoop
-    (fn-traced [{:keys [db]} [_ id]]
-               {:web3/call {:web3 (get-in db [:web3 :web3-instance])
-                            :fns [{:instance (get-in db [:web3 :contract-instance])
+    (fn-traced [{:keys [db]} [_ web3 id]]
+               {:web3/call {:web3 (:web3-instance web3)
+                            :fns [{:instance (:contract-instance web3)
                                    :fn :scoop
                                    :args [id]
                                    :on-success [::fetch-scoop-success]
@@ -141,19 +136,19 @@
                                              (js/console.log err)
                                              (web3/wait-for-mined web3 tx-hash
                                                                   #(js/console.log "pending")
-                                                                  #(re-frame/dispatch [::mint-success %]))))))
+                                                                  #(re-frame/dispatch [::mint-success web3 %]))))))
                (assoc db :loading? {:message "Minting..."})))
 
    (re-frame/reg-event-db
     ::mint-success
-    (fn-traced [db [_ res]]
-               (re-frame/dispatch [::fetch-scoops (get-in db [:web3 :my-address])])
+    (fn-traced [db [_ web3 res]]
+               (re-frame/dispatch [::fetch-scoops web3])
                (dissoc db :loading?)))
 
    (re-frame/reg-event-db
     ::update-meta
     (fn-traced [db [_ web3 id hash]]
-               (web3-eth/contract-call (get-in web3 [:contract-instance])
+               (web3-eth/contract-call (:contract-instance web3)
                                        :set-token-meta-data-uri
                                        id hash
                                        {:gas 4700000
@@ -161,13 +156,13 @@
                                        (fn [err tx-hash]
                                          (web3/wait-for-mined web3 tx-hash
                                                               #(js/console.log "pending")
-                                                              #(re-frame/dispatch [::update-meta-success %]))))
+                                                              #(re-frame/dispatch [::update-meta-success web3 %]))))
                (assoc db :loading? {:message "Updating meta info..."})))
 
    (re-frame/reg-event-db
     ::update-meta-success
-    (fn-traced [db [_ res]]
-               (re-frame/dispatch [::fetch-scoops (get-in db [:web3 :my-address])])
+    (fn-traced [db [_ web3 res]]
+               (re-frame/dispatch [::fetch-scoops web3 (:my-address web3)])
                (dissoc db :loading?)))])
 
 (defmethod ig/halt-key! :scoopmarket.module.events [_ _]

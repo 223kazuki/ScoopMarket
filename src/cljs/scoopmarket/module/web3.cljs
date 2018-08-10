@@ -25,18 +25,21 @@
     (let [{:keys [abi networks] :as contract} (-> contract-json
                                                   (js/JSON.parse)
                                                   (js->clj :keywordize-keys true))
-          network-id (keyword (str network-id))
-          address (-> networks network-id :address)]
+          network-id-key (keyword (str network-id))
+          address (-> networks network-id-key :address)]
       {:web3-instance web3-instance
        :contract-instance (web3-eth/contract-at web3-instance abi address)
+       :network-id network-id
+       :dev dev
        :contract contract
+       :contract-address address
        :my-address (aget web3-instance "eth" "defaultAccount")
        :is-rinkeby? (or (some-> web3-instance
                                 (aget "currentProvider")
                                 (aget "publicConfigStore")
                                 (aget "_state")
                                 (aget "networkVersion")
-                                (= (name network-id)))
+                                (= (str network-id)))
                         dev)})))
 
 (defmethod ig/halt-key! :scoopmarket.module.web3 [_ _])

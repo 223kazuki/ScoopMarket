@@ -17,6 +17,7 @@
                  [soda-ash "0.78.2" :exclusions [[cljsjs/react]]]
                  [day8.re-frame/http-fx "0.1.6"]
                  [district0x.re-frame/web3-fx "1.0.5" :exclusions [[cljs-web3]]]]
+  :source-paths ["src/clj"]
   :plugins [[lein-cljsbuild "1.1.7"]]
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"
                                     "test/js"]
@@ -29,7 +30,7 @@
                      ["cljsbuild" "once" "min"]]}
   :profiles
   {:dev  [:project/dev :profiles/dev]
-   :prod { :dependencies [[day8.re-frame/tracing-stubs "0.5.1"]]}
+   :prod {:dependencies [[day8.re-frame/tracing-stubs "0.5.1"]]}
    :profiles/dev {}
    :project/dev  {:dependencies [[binaryage/devtools "0.9.10"]
                                  [day8.re-frame/re-frame-10x "0.3.3"]
@@ -61,8 +62,7 @@
                     :output-to       "resources/public/js/compiled/app.js"
                     :optimizations   :advanced
                     :closure-defines {goog.DEBUG false}
-                    :pretty-print    false
-                    :externs ["resources/uport-connect.ext.js"]}}
+                    :pretty-print    false}}
     {:id "test"
      :source-paths ["src/cljs" "test/cljs"]
      :compiler     {:main          scoopmarket.runner
