@@ -88,6 +88,16 @@
                                     (into {}))))))
 
    (re-frame/reg-event-fx
+    ::fetch-scoops-for-sale
+    (fn-traced [{:keys [db]} [_ web3]]
+               {:web3/call {:web3 (:web3-instance web3)
+                            :fns [{:instance (:contract-instance web3)
+                                   :fn :scoops-for-sale
+                                   :args []
+                                   :on-success [::fetch-scoops-for-sale-success]
+                                   :on-error [::api-failure]}]}}))
+
+   (re-frame/reg-event-fx
     ::fetch-scoop
     (fn-traced [{:keys [db]} [_ web3 id]]
                {:web3/call {:web3 (:web3-instance web3)
@@ -119,6 +129,53 @@
                                 assoc :id id :name name :timestamp timestamp :image-hash image-hash
                                 :price price :for-sale? for-sale? :author author :meta-hash meta-hash
                                 :owner owner requestor requestor)))))
+
+   (re-frame/reg-event-db
+    ::fetch-scoops-for-sale-success
+    (fn-traced [db [_ scoops-for-sale]]
+               (assoc db
+                      :loading? false
+                      :scoops-for-sale (meta-merge
+                                        (:scoops-for-sale db)
+                                        (->> scoops-for-sale
+                                             (map-indexed (fn [id for-sale?]
+                                                            (when for-sale?
+                                                              (hash-map (keyword (str id)) {:id id}))))
+                                             (into {}))))))
+
+   (re-frame/reg-event-fx
+    ::fetch-scoop-for-sale
+    (fn-traced [{:keys [db]} [_ web3 id]]
+               {:web3/call {:web3 (:web3-instance web3)
+                            :fns [{:instance (:contract-instance web3)
+                                   :fn :scoop
+                                   :args [id]
+                                   :on-success [::fetch-scoop-for-sale-success]
+                                   :on-error [::api-failure]}]}}))
+
+   (re-frame/reg-event-db
+    ::fetch-scoop-for-sale-success
+    (fn-traced [db [_ scoop]]
+               (let [[id name timestamp image-hash price for-sale? meta-hash author owner requestor] scoop
+                     id (first (aget id "c"))
+                     price (first (aget price "c"))
+                     timestamp (first (aget timestamp "c"))
+                     cat (aget (:ipfs db) "cat")]
+                 (when-not (empty? meta-hash)
+                   (cat meta-hash
+                        (fn [_ file]
+                          (when file
+                            (let [meta (js->clj (.parse js/JSON
+                                                        (.toString file "utf8"))
+                                                :keywordize-keys true)]
+                              (re-frame/dispatch [::fetch-meta-success id meta]))))))
+                 (-> db
+                     (dissoc :loading?)
+                     (update-in [:scoops-for-sale (keyword (str id))]
+                                assoc :id id :name name :timestamp timestamp :image-hash image-hash
+                                :price price :for-sale? for-sale? :author author :meta-hash meta-hash
+                                :owner owner requestor requestor)))))
+
 
    (re-frame/reg-event-db
     ::fetch-meta-success

@@ -76,8 +76,8 @@
                 [:img {:style {:width "100%"} :src image-uri}]]]]
              [sa/Card {:style {:width "100%"}}
               [:div {:on-click #(swap! modal-open? not)
-                     :style {:display "table-cell" :width "100%" :height "220px"
-                             :text-align "center" :vertical-align "middle"}}
+                     :style {:display "table-cell" :width "100%" :height "210px"
+                             :padding-top "5px" :text-align "center" :vertical-align "middle"}}
                [:img {:src image-uri :style {:height "100%" :max-height "200px"
                                              :max-width "100%"}}]]
               [sa/CardContent
@@ -93,6 +93,41 @@
                              :handlers {:meta-update-handler
                                         (fn [meta-hash]
                                           (re-frame/dispatch [::events/update-meta web3 id meta-hash]))}}]]]])))})))
+
+(defn scoop-for-sale-card [{:keys [:configs :handlers]}]
+  (let [{:keys [:scoop :ipfs :web3]} configs
+        {:keys [:id :name :timestamp :image-hash :price :for-sale? :author :meta]} scoop
+        modal-open? (reagent/atom false)]
+    (reagent/create-class
+     {:component-did-mount
+      #(when (nil? image-hash)
+         (re-frame/dispatch [::events/fetch-scoop-for-sale web3 id]))
+
+      :reagent-render
+      (fn []
+        (when image-hash
+          (let [image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)]
+            [:<>
+             [sa/Transition {:visible @modal-open?
+                             :animation "fade up" :duration 500 :unmount-on-hide true}
+              [sa/Modal {:close-icon true :size "large"
+                         :open @modal-open? :on-close #(swap! modal-open? not)}
+               [sa/ModalContent
+                [:img {:style {:width "100%"} :src image-uri}]]]]
+             [sa/Card {:style {:width "100%"}}
+              [:div {:on-click #(swap! modal-open? not)
+                     :style {:display "table-cell" :width "100%" :height "210px"
+                             :padding-top "5px" :text-align "center" :vertical-align "middle"}}
+               [:img {:src image-uri :style {:height "100%" :max-height "200px"
+                                             :max-width "100%"}}]]
+              [sa/CardContent
+               [sa/CardHeader [:a {:href (str "/verify/" id)} name]]
+               [sa/CardMeta
+                [:span.date (str "Uploaded : " (.format (.unix js/moment timestamp)
+                                                        "YYYY/MM/DD HH:mm:ss"))] [:br]
+                [:span (if-not for-sale?
+                         "Not for sale"
+                         (str "For sale : "  price " wei"))]]]]])))})))
 
 (defn image-uploader [{:keys [:configs :handlers]}]
   (let [id (random-uuid)
@@ -240,10 +275,10 @@
   (reagent/create-class
    {:component-did-mount
     #(let [web3 @(re-frame/subscribe [::subs/web3])]
-       (re-frame/dispatch [::events/fetch-scoops web3]))
+       (re-frame/dispatch [::events/fetch-scoops-for-sale web3]))
 
     :reagent-render
-    (let [scoops (re-frame/subscribe [::subs/scoops])
+    (let [scoops-for-sale (re-frame/subscribe [::subs/scoops-for-sale])
           credential (re-frame/subscribe [::subs/credential])
           web3 (re-frame/subscribe [::subs/web3])
           ipfs (re-frame/subscribe [::subs/ipfs])
@@ -252,7 +287,7 @@
         (let [web3 @web3 ipfs @ipfs uport @uport
               {:keys [avatar name]} @credential]
           [:div
-           [sa/Header {:as "h1"} (if name name "My Page")]
+           [sa/Header {:as "h1"} "Market"]
            (when-let [image-uri (:uri avatar)]
              [:img {:src image-uri}])
            [sa/Divider {:hidden true}]
@@ -266,12 +301,12 @@
               [sa/Icon {:name "id card"}] "Connect to uPort"])
            [sa/Divider]
            [sa/Grid {:doubling true :columns 3}
-            (for [[_ scoop] (sort-by key @scoops)]
+            (for [[_ scoop] (sort-by key @scoops-for-sale)]
               ^{:key scoop}
               [sa/GridColumn
-               [scoop-card {:configs {:scoop scoop :web3 web3 :ipfs ipfs}}]])]])))}))
+               [scoop-for-sale-card {:configs {:scoop scoop :web3 web3 :ipfs ipfs}}]])]])))}))
 
-(defn none-panel   [] [:div])
+(defn none-panel [] [:div])
 
 (defmulti  panels :panel)
 (defmethod panels :mypage-panel [] #'mypage-panel)

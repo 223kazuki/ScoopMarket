@@ -39,6 +39,11 @@
       (:scoops db)))
 
    (re-frame/reg-sub
+    ::scoops-for-sale
+    (fn [db]
+      (:scoops-for-sale db)))
+
+   (re-frame/reg-sub
     ::credential
     (fn [db]
       (:credential db)))])
