@@ -15,8 +15,8 @@
     (reagent/create-class
      {:component-did-mount
       #(when (nil? image-hash)
-         (re-frame/dispatch [::events/fetch-scoop-for-sale web3 id])
-         (re-frame/dispatch [::events/fetch-scoop-for-sale-approved web3 id]))
+         (re-frame/dispatch [::events/fetch-scoop web3 :scoops-for-sale id])
+         (re-frame/dispatch [::events/fetch-scoop-approval web3 :scoops-for-sale id]))
 
       :reagent-render
       (fn []
@@ -78,7 +78,7 @@
           [:div
            [sa/Header {:as "h1"} "Market"]
            [sa/Label {:as "label" :class "button" :size "large"
-                      :on-click #(re-frame/dispatch [::events/fetch-scoops web3])}
+                      :on-click #(re-frame/dispatch [::events/refetch-scoops-for-sale web3])}
             [sa/Icon {:name "undo" :style {:margin 0}}]]
            [sa/Divider]
            [sa/Grid {:columns (if mobile? 1 3)}

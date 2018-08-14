@@ -15,7 +15,7 @@
      {:component-did-mount
       #(let [scoop (get-in @scoops [(keyword (str id))])]
          (when-not (:image-hash scoop)
-           (re-frame/dispatch [::events/fetch-scoop web3 id])))
+           (re-frame/dispatch [::events/fetch-scoop web3 :scoops id])))
 
       :reagent-render
       (fn []

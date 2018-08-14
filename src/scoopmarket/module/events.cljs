@@ -17,6 +17,16 @@
                initial-db))
 
    (re-frame/reg-event-db
+    ::toggle-sidebar
+    (fn-traced [db _]
+               (update-in db [:sidebar-opened] not)))
+
+   (re-frame/reg-event-db
+    ::set-active-page
+    (fn-traced [db [_ panel route-params]]
+               (assoc db :active-page {:panel panel :route-params route-params})))
+
+   (re-frame/reg-event-db
     ::connect-uport
     (fn-traced [db [_ uport web3]]
                (uport/request-credentials
@@ -30,7 +40,8 @@
                      {:keys [:contract :contract-address :network-id :dev]} web3
                      {:keys [:abi :networks]} contract
                      web3-instance (js-invoke uport "getWeb3")
-                     contract-instance (web3-eth/contract-at web3-instance abi contract-address)
+                     contract-instance
+                     (web3-eth/contract-at web3-instance abi contract-address)
                      my-address (when (uport/is-mnid? address)
                                   (aget (uport/decode address) "address"))
                      is-rinkeby? (or (some-> (:uport db)
@@ -48,16 +59,6 @@
                      (dissoc :scoops)))))
 
    (re-frame/reg-event-db
-    ::toggle-sidebar
-    (fn-traced [db _]
-               (update-in db [:sidebar-opened] not)))
-
-   (re-frame/reg-event-db
-    ::set-active-page
-    (fn-traced [db [_ panel route-params]]
-               (assoc db :active-page {:panel panel :route-params route-params})))
-
-   (re-frame/reg-event-db
     ::api-failure
     (fn-traced [db [_ result]]
                (js/console.log "Api failure." result)
@@ -67,7 +68,7 @@
 
    (re-frame/reg-event-fx
     ::fetch-scoops
-    (fn-traced [{:keys [db]} [_ web3]]
+    (fn-traced [{:keys [:db]} [_ web3]]
                {:web3/call {:web3 (:web3-instance web3)
                             :fns [{:instance (:contract-instance web3)
                                    :fn :scoops-of
@@ -78,14 +79,20 @@
    (re-frame/reg-event-db
     ::fetch-scoops-success
     (fn-traced [db [_ scoops]]
-               (assoc db
-                      :loading? false
-                      :scoops (meta-merge
-                               (:scoops db)
-                               (->> scoops
-                                    (map #(let [id (first (aget % "c"))]
-                                            (hash-map (keyword (str id)) {:id id})))
-                                    (into {}))))))
+               (-> db
+                   (dissoc :loading?)
+                   (assoc :scoops (meta-merge
+                                   (:scoops db)
+                                   (->> scoops
+                                        (map #(let [id (js-invoke % "toNumber")]
+                                                (hash-map (keyword (str id)) {:id id})))
+                                        (into {})))))))
+
+   (re-frame/reg-event-db
+    ::refetch-scoops
+    (fn-traced [db [_ web3]]
+               (re-frame/dispatch [::fetch-scoops web3])
+               (dissoc db :scoops)))
 
    (re-frame/reg-event-fx
     ::fetch-scoops-for-sale
@@ -97,113 +104,82 @@
                                    :on-success [::fetch-scoops-for-sale-success]
                                    :on-error [::api-failure]}]}}))
 
+   (re-frame/reg-event-db
+    ::fetch-scoops-for-sale-success
+    (fn-traced [db [_ scoops-for-sale]]
+               (-> db
+                   (dissoc :loading?)
+                   (assoc :scoops-for-sale (meta-merge
+                                            (:scoops-for-sale db)
+                                            (->> scoops-for-sale
+                                                 (map-indexed (fn [id for-sale?]
+                                                                (when for-sale?
+                                                                  (hash-map (keyword (str id)) {:id id}))))
+                                                 (into {})))))))
+
+   (re-frame/reg-event-db
+    ::refetch-scoops-for-sale
+    (fn-traced [db [_ web3]]
+               (re-frame/dispatch [::fetch-scoops-for-sale web3])
+               (dissoc db :scoops-for-sale)))
+
    (re-frame/reg-event-fx
     ::fetch-scoop
-    (fn-traced [{:keys [db]} [_ web3 id]]
+    (fn-traced [{:keys [db]} [_ web3 db-key id]]
                {:web3/call {:web3 (:web3-instance web3)
                             :fns [{:instance (:contract-instance web3)
                                    :fn :scoop
                                    :args [id]
-                                   :on-success [::fetch-scoop-success]
+                                   :on-success [::fetch-scoop-success db-key]
                                    :on-error [::api-failure]}]}}))
 
    (re-frame/reg-event-db
     ::fetch-scoop-success
-    (fn-traced [db [_ scoop]]
-               (let [[id name timestamp image-hash price for-sale? meta-hash author owner requestor] scoop
-                     id (first (aget id "c"))
-                     price (first (aget price "c"))
-                     timestamp (first (aget timestamp "c"))
-                     cat (aget (:ipfs db) "cat")]
+    (fn-traced [db [_ db-key scoop]]
+               (let [[:id :name :timestamp :image-hash :price :for-sale?
+                      :meta-hash :author :owner :requestor] scoop
+                     id (js-invoke id "toNumber")
+                     price (js-invoke price "toNumber")
+                     timestamp (js-invoke timestamp "toNumber")]
                  (when-not (empty? meta-hash)
-                   (cat meta-hash
-                        (fn [_ file]
-                          (when file
-                            (let [meta (js->clj (.parse js/JSON
-                                                        (.toString file "utf8"))
-                                                :keywordize-keys true)]
-                              (re-frame/dispatch [::fetch-meta-success id meta]))))))
+                   (js-invoke (:ipfs db) "cat" meta-hash
+                              (fn [_ file]
+                                (when file
+                                  (let [meta (js->clj (.parse js/JSON
+                                                              (.toString file "utf8"))
+                                                      :keywordize-keys true)]
+                                    (re-frame/dispatch [::fetch-meta-success
+                                                        db-key id meta]))))))
                  (-> db
                      (dissoc :loading?)
-                     (update-in [:scoops (keyword (str id))]
-                                assoc :id id :name name :timestamp timestamp :image-hash image-hash
-                                :price price :for-sale? for-sale? :author author :meta-hash meta-hash
-                                :owner owner requestor requestor)))))
-
-   (re-frame/reg-event-db
-    ::fetch-scoops-for-sale-success
-    (fn-traced [db [_ scoops-for-sale]]
-               (assoc db
-                      :loading? false
-                      :scoops-for-sale (meta-merge
-                                        (:scoops-for-sale db)
-                                        (->> scoops-for-sale
-                                             (map-indexed (fn [id for-sale?]
-                                                            (when for-sale?
-                                                              (hash-map (keyword (str id)) {:id id}))))
-                                             (into {}))))))
-
-   (re-frame/reg-event-fx
-    ::fetch-scoop-for-sale
-    (fn-traced [{:keys [db]} [_ web3 id]]
-               {:web3/call {:web3 (:web3-instance web3)
-                            :fns [{:instance (:contract-instance web3)
-                                   :fn :scoop
-                                   :args [id]
-                                   :on-success [::fetch-scoop-for-sale-success]
-                                   :on-error [::api-failure]}]}}))
-
-   (re-frame/reg-event-db
-    ::fetch-scoop-for-sale-success
-    (fn-traced [db [_ scoop]]
-               (let [[id name timestamp image-hash price for-sale? meta-hash author owner requestor] scoop
-                     id (first (aget id "c"))
-                     price (first (aget price "c"))
-                     timestamp (first (aget timestamp "c"))
-                     cat (aget (:ipfs db) "cat")]
-                 (when-not (empty? meta-hash)
-                   (cat meta-hash
-                        (fn [_ file]
-                          (when file
-                            (let [meta (js->clj (.parse js/JSON
-                                                        (.toString file "utf8"))
-                                                :keywordize-keys true)]
-                              (re-frame/dispatch [::fetch-meta-for-sale-success id meta]))))))
-                 (-> db
-                     (dissoc :loading?)
-                     (update-in [:scoops-for-sale (keyword (str id))]
-                                assoc :id id :name name :timestamp timestamp :image-hash image-hash
-                                :price price :for-sale? for-sale? :author author :meta-hash meta-hash
+                     (update-in [db-key (keyword (str id))]
+                                assoc :id id :name name :timestamp timestamp
+                                :image-hash image-hash :price price :for-sale? for-sale?
+                                :author author :meta-hash meta-hash
                                 :owner owner :requestor requestor)))))
 
-
    (re-frame/reg-event-fx
-    ::fetch-scoop-for-sale-approved
-    (fn-traced [{:keys [db]} [_ web3 id]]
+    ::fetch-scoop-approval
+    (fn-traced [{:keys [db]} [_ web3 db-key id]]
                {:web3/call {:web3 (:web3-instance web3)
                             :fns [{:instance (:contract-instance web3)
                                    :fn :get-approved
                                    :args [id]
-                                   :on-success [::fetch-scoop-for-sale-approved-success id]
+                                   :on-success [::fetch-scoop-approval-success db-key id]
                                    :on-error [::api-failure]}]}}))
 
    (re-frame/reg-event-db
-    ::fetch-scoop-for-sale-approved-success
-    (fn-traced [db [_ id approved]]
+    ::fetch-scoop-approval-success
+    (fn-traced [db [_ id db-key approved]]
                (-> db
                    (dissoc :loading?)
-                   (update-in [:scoops-for-sale (keyword (str id))]
+                   (update-in [db-key (keyword (str id))]
                               assoc :approved approved))))
 
    (re-frame/reg-event-db
     ::fetch-meta-success
-    (fn-traced [db [_ id meta]]
-               (assoc-in db [:scoops (keyword (str id)) :meta] meta)))
-
-   (re-frame/reg-event-db
-    ::fetch-meta-for-sale-success
-    (fn-traced [db [_ id meta]]
-               (assoc-in db [:scoops-for-sale (keyword (str id)) :meta] meta)))
+    (fn-traced [db [_ db-key id meta]]
+               (assoc-in db [db-key (keyword (str id)) :meta] meta)))
 
    (re-frame/reg-event-db
     ::mint

@@ -60,7 +60,7 @@
     (reagent/create-class
      {:component-did-mount
       #(when (nil? image-hash)
-         (re-frame/dispatch [::events/fetch-scoop web3 id]))
+         (re-frame/dispatch [::events/fetch-scoop web3 :scoops id]))
 
       :reagent-render
       (fn []
@@ -94,21 +94,19 @@
                                           (re-frame/dispatch [::events/update-meta web3 id meta-hash]))}}]]]])))})))
 
 (defn image-uploader [{:keys [:configs :handlers]}]
-  (let [id (random-uuid)
-        {:keys [:upload-handler]} handlers]
-    (fn []
-      [:<>
-       [sa/Label {:htmlFor id :as "label" :class "button" :size "large"}
-        [sa/Icon {:name "photo"}] "New Scoop"]
-       [:input {:id id :type "file" :style {:display "none"}
-                :accept "image/*" :capture "camera"
-                :on-change (fn []
-                             (let [el (.getElementById js/document id)
-                                   file (aget (.-files el) 0)
-                                   reader (js/FileReader.)]
-                               (set! (.-onloadend reader)
-                                     #(upload-handler reader))
-                               (.readAsArrayBuffer reader file)))}]])))
+  (let [id (random-uuid) {:keys [:upload-handler]} handlers]
+    [:<>
+     [sa/Label {:htmlFor id :as "label" :class "button" :size "large"}
+      [sa/Icon {:name "photo"}] "New Scoop"]
+     [:input {:id id :type "file" :style {:display "none"}
+              :accept "image/*" :capture "camera"
+              :on-change (fn []
+                           (let [el (.getElementById js/document id)
+                                 file (aget (.-files el) 0)
+                                 reader (js/FileReader.)]
+                             (set! (.-onloadend reader)
+                                   #(upload-handler reader))
+                             (.readAsArrayBuffer reader file)))}]]))
 
 (defn scoop-uploader [{:keys [:configs :handlers]}]
   (let [{:keys [:ipfs]} configs
@@ -184,11 +182,14 @@
         (let [web3 @web3 ipfs @ipfs uport @uport
               {:keys [avatar name]} @credential]
           [:div
-           [sa/Header {:as "h1"} (if name name "My Page")]
-           (when-let [image-uri (:uri avatar)]
-             [:img {:src image-uri}])
+           [sa/Header {:as "h1"} "My Page"]
+           (when @credential
+             [sa/Segment {:text-align "center"}
+              [sa/Header {:as "h2"} name]
+              [:img {:src (:uri avatar)}]
+              [sa/Divider {:hidden true}]])
            [sa/Label {:as "label" :class "button" :size "large"
-                      :on-click #(re-frame/dispatch [::events/fetch-scoops web3])}
+                      :on-click #(re-frame/dispatch [::events/refetch-scoops web3])}
             [sa/Icon {:name "undo" :style {:margin 0}}]]
            [scoop-uploader {:configs {:ipfs ipfs}
                             :handlers {:scoop-upload-handler
