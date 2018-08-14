@@ -11,7 +11,7 @@
             [scoopmarket.module.routes])
   (:require-macros [scoopmarket.macro :refer [slurp]]))
 
-(def contract-json (slurp "build/contracts/Scoop.json"))
+(def contract-json (slurp "build/contracts/ScoopMarket.json"))
 (def debug? ^boolean goog.DEBUG)
 
 (def system-conf

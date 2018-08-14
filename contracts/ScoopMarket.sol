@@ -1,40 +1,40 @@
 pragma solidity ^0.4.23;
 
-// TODO: Delete ../node_modules/
+// TODO: Delete ../node_modules 
 import "../node_modules/openzeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
 import "../node_modules/openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-contract Scoop is ERC721Token, Ownable {
+contract ScoopMarket is ERC721Token, Ownable {
     using SafeMath for uint;
 
     struct ScoopToken {
         string  name;
         uint    timestamp;
         string  imageURI;
+        address author;
         uint    price;
         bool    forSale;
         string  metaDataURI;
-        address author;
         address requestor;
     }
     ScoopToken[] scoops;
-
     uint public mintCost = 10 ** 16 wei;
 
     constructor() public ERC721Token("Scoop", "SCP") {}
 
     function mint(string _name, uint _price, bool _forSale, string _imageURI) external payable {
-        require(msg.value == mintCost);
-
-        ScoopToken memory _scoop = ScoopToken(_name, block.timestamp, _imageURI, _price, _forSale, "", msg.sender, address(0));
+        require(msg.value == mintCost, "Mint cost is insufficient.");
+        ScoopToken memory _scoop = ScoopToken(_name, block.timestamp, _imageURI, msg.sender, _price, _forSale, "", address(0));
         uint tokenID = scoops.push(_scoop).sub(1);
-
         super._mint(msg.sender, tokenID);
     }
 
     function setMintCost(uint _mintCost) external onlyOwner {
         mintCost = _mintCost;
+    }
+
+    function withdraw() external onlyOwner {
     }
 
     function scoopsOf(address _address) external view returns (uint[]) {
@@ -50,7 +50,7 @@ contract Scoop is ERC721Token, Ownable {
     }
 
     function editToken(uint _tokenID, string _name, uint _price, bool _forSale, string _metaDataURI) external onlyOwnerOf(_tokenID) {
-        require(exists(_tokenID));
+        require(exists(_tokenID), "Token doesn't exist.");
         ScoopToken storage _scoop = scoops[_tokenID];
         _scoop.name = _name;
         _scoop.price = _price;
@@ -79,7 +79,7 @@ contract Scoop is ERC721Token, Ownable {
     }
 
     function approve(address _to, uint _tokenID) public onlyOwnerOf(_tokenID) {
-        require(_to == scoops[_tokenID].requestor);
+        require(_to == scoops[_tokenID].requestor, "Tried to approve non requestor.");
         super.approve(_to, _tokenID);
     }
 
@@ -89,23 +89,20 @@ contract Scoop is ERC721Token, Ownable {
     }
 
     function purchase(uint _tokenID) external payable {
-        address oldOwner = tokenOwner[_tokenID];
-        address newOwner = msg.sender;
-        require(oldOwner != newOwner);
-        require(scoops[_tokenID].price <= msg.value);
-        require(scoops[_tokenID].forSale == true);
-        
-        ScoopToken memory _scoop = scoops[_tokenID];
-        uint price = _scoop.price;
-        require(msg.value >= price);
+        address seller = tokenOwner[_tokenID];
+        address buyer = msg.sender;
+        require(seller != buyer, "Can't transfer to myself.");
+        require(scoops[_tokenID].forSale == true, "This token isn't for sale.");
+        require(scoops[_tokenID].price <= msg.value, "Value is insufficient.");
+        ScoopToken memory scoop = scoops[_tokenID];
 
-        safeTransferFrom(oldOwner, newOwner, _tokenID);
+        safeTransferFrom(seller, buyer, _tokenID);
 
-        scoops[_tokenID].forSale = false;
-        scoops[_tokenID].requestor = address(0);
+        scoop.forSale = false;
+        scoop.requestor = address(0);
 
-        if (price > 0) {
-            newOwner.transfer(price);
+        if (scoops[_tokenID].price > 0) {
+            buyer.transfer(scoops[_tokenID].price);
         }
     }
 }
