@@ -105,4 +105,6 @@ contract ScoopMarket is ERC721Token, Ownable {
             buyer.transfer(scoops[_tokenID].price);
         }
     }
+
+    // TODO: burn
 }
