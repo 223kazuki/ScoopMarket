@@ -49,22 +49,13 @@ contract Scoop is ERC721Token, Ownable {
         return result;
     }
 
-    function setTokenMetaDataUri(uint256 _tokenID, string _metaDataURI) external onlyOwnerOf(_tokenID) {
+    function editToken(uint _tokenID, string _name, uint _price, bool _forSale, string _metaDataURI) external onlyOwnerOf(_tokenID) {
         require(exists(_tokenID));
         ScoopToken storage _scoop = scoops[_tokenID];
-        _scoop.metaDataURI = _metaDataURI;
-    }
-
-    function setTokenPrice(uint256 _tokenID, uint _price) external onlyOwnerOf(_tokenID) {
-        require(exists(_tokenID));
-        ScoopToken storage _scoop = scoops[_tokenID];
+        _scoop.name = _name;
         _scoop.price = _price;
-    }
-
-    function setTokenForSale(uint256 _tokenID, bool _forSale) external onlyOwnerOf(_tokenID) {
-        require(exists(_tokenID));
-        ScoopToken storage _scoop = scoops[_tokenID];
         _scoop.forSale = _forSale;
+        _scoop.metaDataURI = _metaDataURI;
     }
 
     function scoop(uint _tokenID) external view returns (uint, string, uint, string, uint, bool, string, address, address, address) {
@@ -75,29 +66,29 @@ contract Scoop is ERC721Token, Ownable {
             _scoop.metaDataURI, _scoop.author, owner, _scoop.requestor);
     }
 
-    function request(uint256 _tokenID) external payable {
+    function request(uint _tokenID) external payable {
         ScoopToken storage _scoop = scoops[_tokenID];
         _scoop.requestor = msg.sender;
     }
 
-    function cancel(uint256 _tokenID) external payable {
+    function cancel(uint _tokenID) external payable {
         ScoopToken storage _scoop = scoops[_tokenID];
         _scoop.requestor = address(0);
         address owner = tokenOwner[_tokenID];
         super.clearApproval(owner, _tokenID);
     }
 
-    function approve(address _to, uint256 _tokenID) public onlyOwnerOf(_tokenID) {
+    function approve(address _to, uint _tokenID) public onlyOwnerOf(_tokenID) {
         require(_to == scoops[_tokenID].requestor);
         super.approve(_to, _tokenID);
     }
 
-    function deny(uint256 _tokenID) external payable onlyOwnerOf(_tokenID) {
+    function deny(uint _tokenID) external payable onlyOwnerOf(_tokenID) {
         ScoopToken storage _scoop = scoops[_tokenID];
         _scoop.requestor = address(0);
     }
 
-    function purchase(uint256 _tokenID) external payable {
+    function purchase(uint _tokenID) external payable {
         address oldOwner = tokenOwner[_tokenID];
         address newOwner = msg.sender;
         require(oldOwner != newOwner);

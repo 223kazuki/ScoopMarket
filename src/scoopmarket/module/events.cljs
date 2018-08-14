@@ -209,21 +209,22 @@
                (dissoc db :loading?)))
 
    (re-frame/reg-event-db
-    ::update-meta
-    (fn-traced [db [_ web3 id hash]]
-               (web3-eth/contract-call (:contract-instance web3)
-                                       :set-token-meta-data-uri
-                                       id hash
-                                       {:gas 4700000
-                                        :gas-price 100000000000}
-                                       (fn [err tx-hash]
-                                         (web3/wait-for-mined web3 tx-hash
-                                                              #(js/console.log "pending")
-                                                              #(re-frame/dispatch [::update-meta-success web3 %]))))
-               (assoc db :loading? {:message "Updating meta info..."})))
+    ::edit-scoop
+    (fn-traced [db [_ web3 id scoop]]
+               (let [{:keys [name price for-sale? meta-hash]} scoop]
+                 (web3-eth/contract-call (:contract-instance web3)
+                                         :edit-token
+                                         id name (or price 0) (or for-sale? false) meta-hash
+                                         {:gas 4700000
+                                          :gas-price 100000000000}
+                                         (fn [err tx-hash]
+                                           (web3/wait-for-mined web3 tx-hash
+                                                                #(js/console.log "pending")
+                                                                #(re-frame/dispatch [::edit-scoop-success web3])))))
+               (assoc db :loading? {:message "Updating scoop..."})))
 
    (re-frame/reg-event-db
-    ::update-meta-success
+    ::edit-scoop-success
     (fn-traced [db [_ web3 res]]
                (re-frame/dispatch [::refetch-scoops web3])
                (re-frame/dispatch [::refetch-scoops-for-sale web3])

@@ -9,49 +9,93 @@
             [cljsjs.buffer]
             [cljsjs.moment]))
 
-(defn meta-editor [{:keys [:configs :handlers]}]
-  (let [{:keys [scoop ipfs]} configs
-        {:keys [:id :meta]} scoop
-        {:keys [:meta-update-handler]} handlers
-        form (reagent/atom meta)
-        editing (reagent/atom false)
-        Buffer js/buffer.Buffer
-        input-text-handler (fn [el]
-                             (let [n (aget (.-target el) "name")
-                                   v (aget (.-target el) "value")]
-                               (swap! form assoc-in [(keyword n)] v)))
-        add-tag (fn [tag]
-                  (swap! form dissoc :new-tag)
-                  (swap! form update :tags #(set (conj % tag))))
-        delete-tag (fn [tag] (swap! form update :tags #(set (remove #{tag} %))))
-        upload-meta (fn []
-                      (let [meta (select-keys @form [:tags])
-                            meta-str (.stringify js/JSON (clj->js meta))
-                            buffer (js-invoke Buffer "from" meta-str)]
-                        (ipfs/upload-data ipfs buffer meta-update-handler)))]
-    (fn []
-      (let [{:keys [:new-tag :tags]} @form]
-        [:<>
-         (for [tag tags]
-           ^{:key tag}
-           [sa/Label {:style {:margin-top "3px"}}
-            tag [sa/Icon {:name "delete"
-                          :on-click #(delete-tag tag)}]])
-         [sa/Icon {:name "edit" :circular true :style {:margin-left "5px"}
-                   :on-click #(swap! editing not)}]
-         (when @editing
-           [:<>
-            [sa/Input {:icon (clj->js
-                              {:name "tags" :circular true :link true
-                               :onClick
-                               #(when-not (empty? new-tag)
-                                  (add-tag new-tag))})
-                       :style {:width "100%" :margin-top "5px"}
-                       :placeholder "Enter tags"
-                       :name "new-tag"
-                       :value (or new-tag "")
-                       :on-change input-text-handler}]
-            [sa/Button {:on-click upload-meta :style {:margin-top "5px"}} "Update meta data"]])]))))
+(defn scoop-editor [{:keys [:configs :handlers]}]
+  (let [{:keys [:scoop :web3 :ipfs]} configs
+        {:keys [:edit-handler]} handlers
+        editing? (reagent/atom false)
+        uploading? (reagent/atom false)
+        form (reagent/atom (select-keys scoop [:name :for-sale? :price :meta]))
+        Buffer js/buffer.Buffer]
+    (letfn [(input-text-handler [el]
+              (let [n (aget (.-target el) "name")
+                    v (aget (.-target el) "value")]
+                (swap! form assoc-in [(keyword n)] v)))
+            (check-handler [_ el]
+              (let [n (aget el "name")
+                    v (aget el "checked")]
+                (swap! form assoc-in [(keyword n)] v)))
+            (add-tag [tag]
+              (swap! form dissoc :new-tag)
+              (swap! form update-in [:meta :tags] #(set (conj % tag))))
+            (delete-tag [tag] (swap! form update-in [:meta :tags] #(set (remove #{tag} %))))
+            (upload-meta []
+              (reset! uploading? true)
+              (let [meta (select-keys (:meta @form) [:tags])
+                    meta-str (.stringify js/JSON (clj->js meta))
+                    buffer (js-invoke Buffer "from" meta-str)]
+                (ipfs/upload-data ipfs buffer
+                                  #(do
+                                     (reset! uploading? false)
+                                     (edit-handler
+                                      (-> @form
+                                          (select-keys [:name :for-sale? :price])
+                                          (assoc :meta-hash %)))))))]
+      (fn []
+        (let [{:keys [:new-tag :name :for-sale? :price :meta]} @form
+              tags (:tags meta)]
+          [:<>
+           [sa/Button {:on-click #(swap! editing? not)} "Edit"]
+           [sa/Transition {:visible @editing?
+                           :animation "fade up" :duration 500 :unmount-on-hide true}
+            [sa/Modal {:open true :size "small" :close-icon true
+                       :on-close #(swap! editing? not)}
+             [sa/ModalContent
+              [sa/Segment
+               [sa/Form
+                [sa/FormField
+                 [:label "Scoop Name"]
+                 [:input {:placeholder "My Scoop"
+                          :name "name"
+                          :value (:name @form "")
+                          :on-change input-text-handler}]]
+                [sa/FormField
+                 [sa/Checkbox {:name "for-sale?"
+                               :on-change check-handler
+                               :checked (:for-sale? @form false)
+                               :label "For sale?"}]]
+                [sa/FormField
+                 [:label "Scoop Price"]
+                 [:input {:placeholder "1000000000000000 wei"
+                          :name "price"
+                          :type "number"
+                          :disabled (not (:for-sale? @form false))
+                          :value (:price @form "")
+                          :on-change input-text-handler}]]
+                [sa/FormField
+                 [:label "Tags"]
+                 (for [tag tags]
+                   ^{:key tag}
+                   [sa/Label {:style {:margin-top "3px"}}
+                    tag [sa/Icon {:name "delete"
+                                  :on-click #(delete-tag tag)}]])
+                 [sa/Input {:icon (clj->js
+                                   {:name "tags" :circular true :link true
+                                    :onClick
+                                    #(when-not (empty? new-tag)
+                                       (add-tag new-tag))})
+                            :style {:width "100%" :margin-top "5px"}
+                            :placeholder "Enter tags"
+                            :name "new-tag"
+                            :value (or new-tag "")
+                            :on-change input-text-handler}]]]
+               [sa/Divider {:hidden true}]
+               [sa/Button {:disabled (or (nil? (:name @form))
+                                         (empty? (:name @form))
+                                         @uploading?)
+                           :on-click upload-meta}
+                (if @uploading?
+                  [:<> [sa/Icon {:loading true :name "spinner"}] "Uploading..."]
+                  "Update")]]]]]])))))
 
 (defn scoop-card [{:keys [:configs :handlers]}]
   (let [{:keys [:scoop :ipfs :web3]} configs
@@ -86,12 +130,17 @@
                                                         "YYYY/MM/DD HH:mm:ss"))] [:br]
                 [:span (if-not for-sale?
                          "Not for sale"
-                         (str "For sale : "  price " wei"))]]]
+                         (str "For sale : "  price " wei"))]
+                (when meta
+                  [:<>
+                   [:br]
+                   "Tags: "(for [tag (:tags meta)]
+                             ^{:key tag} [sa/Label {:style {:margin-top "3px"}} tag])])]]
               [sa/CardContent
-               [meta-editor {:configs {:scoop scoop :ipfs ipfs}
-                             :handlers {:meta-update-handler
-                                        (fn [meta-hash]
-                                          (re-frame/dispatch [::events/update-meta web3 id meta-hash]))}}]]]])))})))
+               [scoop-editor {:configs {:scoop scoop :web3 web3 :ipfs ipfs}
+                              :handlers {:edit-handler
+                                         #(re-frame/dispatch [::events/edit-scoop
+                                                              web3 id %])}}]]]])))})))
 
 (defn image-uploader [{:keys [:configs :handlers]}]
   (let [id (random-uuid) {:keys [:upload-handler]} handlers]

@@ -35,11 +35,12 @@
               [sa/CardMeta
                [:span.date (str "Uploaded : " (.format (.unix js/moment timestamp)
                                                        "YYYY/MM/DD HH:mm:ss"))] [:br]
-               [:span (str price " wei")]]]
-             (when meta
-               [sa/CardContent
-                (for [tag tags]
-                  ^{:key tag} [sa/Label {:style {:margin-top "3px"}} tag])])
+               [:span (str price " wei")]
+               (when meta
+                 [:<>
+                  [:br]
+                  "Tags: " (for [tag tags]
+                             ^{:key tag} [sa/Label {:style {:margin-top "3px"}} tag])])]]
              contents])))})))
 
 (defn my-scoop-card [{:keys [:configs :handlers]}]
@@ -78,7 +79,7 @@
                 [:<>
                  [:span "Requesting..."] [:br]
                  [sa/Button {:style {:margin-top "10px"}
-                             :on-click cancel-handler} "Cancel"]]) ;; TODO: Cancel approval.
+                             :on-click cancel-handler} "Cancel"]])
               [:span "Under deal."])
             [sa/Button {:on-click request-handler} "Request purchase"])]]))))
 
@@ -103,37 +104,43 @@
             [sa/Icon {:name "undo" :style {:margin 0}}]]
            [sa/Divider]
            [sa/Header {:as "h2"} "Your Scoops"]
-           [sa/Grid {:columns (if mobile? 1 3)}
-            (for [[id scoop] (->> @scoops-for-sale
-                                  (filter #(or (nil? (:owner (val %)))
-                                               (= my-address (:owner (val %)))))
-                                  (sort-by key))]
-              ^{:key scoop}
-              [sa/GridColumn
-               [my-scoop-card
-                {:configs {:scoop scoop :web3 web3}
-                 :handlers {:approve-handler
-                            #(re-frame/dispatch [::events/approve web3
-                                                 (name id) (:requestor scoop)])
-                            :deny-handler
-                            #(re-frame/dispatch [::events/deny web3
-                                                 (name id) (:requestor scoop)])}}]])]
+           (let [scoops (->> @scoops-for-sale
+                             (filter #(or (nil? (:owner (val %)))
+                                          (= my-address (:owner (val %)))))
+                             (sort-by key))]
+             (if (empty? scoops)
+               "No scoops."
+               [sa/Grid {:columns (if mobile? 1 3)}
+                (for [[id scoop] scoops]
+                  ^{:key scoop}
+                  [sa/GridColumn
+                   [my-scoop-card
+                    {:configs {:scoop scoop :web3 web3}
+                     :handlers {:approve-handler
+                                #(re-frame/dispatch [::events/approve web3
+                                                     (name id) (:requestor scoop)])
+                                :deny-handler
+                                #(re-frame/dispatch [::events/deny web3
+                                                     (name id) (:requestor scoop)])}}]])]))
            [sa/Divider]
            [sa/Header {:as "h2"} "Scoops on sale"]
-           [sa/Grid {:columns (if mobile? 1 3)}
-            (for [[id scoop] (->> @scoops-for-sale
-                                  (filter #(or (nil? (:owner (val %)))
-                                               (not= my-address (:owner (val %)))))
-                                  (sort-by key))]
-              ^{:key scoop}
-              [sa/GridColumn
-               [others-scoop-card
-                {:configs {:scoop scoop :web3 web3}
-                 :handlers {:request-handler
-                            #(re-frame/dispatch [::events/request web3 (name id)])
-                            :purchase-handler
-                            #(re-frame/dispatch [::events/purchase
-                                                 web3 (name id) (:price scoop)])
-                            :cancel-handler
-                            #(re-frame/dispatch [::events/cancel
-                                                 web3 (name id) (:price scoop)])}}]])]]))})))
+           (let [scoops (->> @scoops-for-sale
+                             (filter #(or (nil? (:owner (val %)))
+                                          (not= my-address (:owner (val %)))))
+                             (sort-by key))]
+             (if (empty? scoops)
+               "No scoops."
+               [sa/Grid {:columns (if mobile? 1 3)}
+                (for [[id scoop] scoops]
+                  ^{:key scoop}
+                  [sa/GridColumn
+                   [others-scoop-card
+                    {:configs {:scoop scoop :web3 web3}
+                     :handlers {:request-handler
+                                #(re-frame/dispatch [::events/request web3 (name id)])
+                                :purchase-handler
+                                #(re-frame/dispatch [::events/purchase
+                                                     web3 (name id) (:price scoop)])
+                                :cancel-handler
+                                #(re-frame/dispatch [::events/cancel
+                                                     web3 (name id) (:price scoop)])}}]])]))]))})))
