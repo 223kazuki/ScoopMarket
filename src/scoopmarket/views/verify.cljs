@@ -20,7 +20,8 @@
       :reagent-render
       (fn []
         (let [scoop (get-in @scoops [(keyword (str id))])
-              {:keys [:id :name :timestamp :image-hash :price :for-sale? :author :owner]} scoop
+              {:keys [:id :name :timestamp :image-hash :price
+                      :for-sale? :author :owner]} scoop
               image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)]
           (when image-hash
             [:div

@@ -77,6 +77,10 @@
               my-address (:my-address web3)]
           [:div
            [sa/Header {:as "h1"} "Market"]
+           [sa/Label {:as "label" :class "button" :size "large"
+                      :on-click #(re-frame/dispatch [::events/fetch-scoops web3])}
+            [sa/Icon {:name "undo" :style {:margin 0}}]]
+           [sa/Divider]
            [sa/Grid {:columns (if mobile? 1 3)}
             (for [[id scoop] (sort-by key @scoops-for-sale)]
               ^{:key scoop}

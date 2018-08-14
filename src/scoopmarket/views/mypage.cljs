@@ -99,7 +99,7 @@
     (fn []
       [:<>
        [sa/Label {:htmlFor id :as "label" :class "button" :size "large"}
-        [sa/Icon {:name "photo"}] "Upload Scoop"]
+        [sa/Icon {:name "photo"}] "New Scoop"]
        [:input {:id id :type "file" :style {:display "none"}
                 :accept "image/*" :capture "camera"
                 :on-change (fn []
@@ -169,18 +169,17 @@
                                      (empty? (:name @form)))
                        :on-click #(scoop-upload-handler @form)} "Mint"]]]]]])))
 
-(defn mypage-panel [_ _]
-  (reagent/create-class
-   {:component-did-mount
-    #(let [web3 @(re-frame/subscribe [::subs/web3])]
-       (re-frame/dispatch [::events/fetch-scoops web3]))
+(defn mypage-panel [mobile? _]
+  (let [scoops (re-frame/subscribe [::subs/scoops])
+        credential (re-frame/subscribe [::subs/credential])
+        web3 (re-frame/subscribe [::subs/web3])
+        ipfs (re-frame/subscribe [::subs/ipfs])
+        uport (re-frame/subscribe [::subs/uport])]
+    (reagent/create-class
+     {:component-did-mount
+      #(re-frame/dispatch [::events/fetch-scoops @web3])
 
-    :reagent-render
-    (let [scoops (re-frame/subscribe [::subs/scoops])
-          credential (re-frame/subscribe [::subs/credential])
-          web3 (re-frame/subscribe [::subs/web3])
-          ipfs (re-frame/subscribe [::subs/ipfs])
-          uport (re-frame/subscribe [::subs/uport])]
+      :reagent-render
       (fn []
         (let [web3 @web3 ipfs @ipfs uport @uport
               {:keys [avatar name]} @credential]
@@ -188,7 +187,9 @@
            [sa/Header {:as "h1"} (if name name "My Page")]
            (when-let [image-uri (:uri avatar)]
              [:img {:src image-uri}])
-           [sa/Divider {:hidden true}]
+           [sa/Label {:as "label" :class "button" :size "large"
+                      :on-click #(re-frame/dispatch [::events/fetch-scoops web3])}
+            [sa/Icon {:name "undo" :style {:margin 0}}]]
            [scoop-uploader {:configs {:ipfs ipfs}
                             :handlers {:scoop-upload-handler
                                        (fn [scoop]
@@ -196,10 +197,10 @@
            (when-not @credential
              [sa/Label {:as "label" :class "button" :size "large"
                         :on-click #(re-frame/dispatch [::events/connect-uport uport web3])}
-              [sa/Icon {:name "id card"}] "Connect to uPort"])
+              [sa/Icon {:name "id card"}] "Connect uPort"])
            [sa/Divider]
-           [sa/Grid {:doubling true :columns 3}
+           [sa/Grid {:columns (if mobile? 1 3)}
             (for [[_ scoop] (sort-by key @scoops)]
               ^{:key scoop}
               [sa/GridColumn
-               [scoop-card {:configs {:scoop scoop :web3 web3 :ipfs ipfs}}]])]])))}))
+               [scoop-card {:configs {:scoop scoop :web3 web3 :ipfs ipfs}}]])]]))})))
