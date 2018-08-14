@@ -249,8 +249,10 @@
                         :on-click #(re-frame/dispatch [::events/connect-uport uport web3])}
               [sa/Icon {:name "id card"}] "Connect uPort"])
            [sa/Divider]
-           [sa/Grid {:columns (if mobile? 1 3)}
-            (for [[_ scoop] (sort-by key @scoops)]
-              ^{:key scoop}
-              [sa/GridColumn
-               [scoop-card {:configs {:scoop scoop :web3 web3 :ipfs ipfs}}]])]]))})))
+           (if-let [scoops (sort-by key @scoops)]
+             [sa/Grid {:columns (if mobile? 1 3)}
+              (for [[_ scoop] scoops]
+                ^{:key scoop}
+                [sa/GridColumn
+                 [scoop-card {:configs {:scoop scoop :web3 web3 :ipfs ipfs}}]])]
+             "No scoops.")]))})))
