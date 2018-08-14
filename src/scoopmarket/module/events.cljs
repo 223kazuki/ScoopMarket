@@ -177,6 +177,24 @@
                                 :owner owner :requestor requestor)))))
 
 
+   (re-frame/reg-event-fx
+    ::fetch-scoop-for-sale-approved
+    (fn-traced [{:keys [db]} [_ web3 id]]
+               {:web3/call {:web3 (:web3-instance web3)
+                            :fns [{:instance (:contract-instance web3)
+                                   :fn :get-approved
+                                   :args [id]
+                                   :on-success [::fetch-scoop-for-sale-approved-success id]
+                                   :on-error [::api-failure]}]}}))
+
+   (re-frame/reg-event-db
+    ::fetch-scoop-for-sale-approved-success
+    (fn-traced [db [_ id approved]]
+               (-> db
+                   (dissoc :loading?)
+                   (update-in [:scoops-for-sale (keyword (str id))]
+                              assoc :approved approved))))
+
    (re-frame/reg-event-db
     ::fetch-meta-success
     (fn-traced [db [_ id meta]]
@@ -231,7 +249,6 @@
    (re-frame/reg-event-db
     ::request
     (fn-traced [db [_ web3 id]]
-               (println id)
                (web3-eth/contract-call (:contract-instance web3)
                                        :request id
                                        {:gas 4700000
@@ -242,13 +259,57 @@
                                            (web3/wait-for-mined web3 tx-hash
                                                                 #(js/console.log "pending")
                                                                 #(re-frame/dispatch [::request-success web3 %])))))
-               (assoc db :loading? {:message "Minting..."})))
+               (assoc db :loading? {:message "Requesting"})))
 
    (re-frame/reg-event-db
     ::request-success
     (fn-traced [db [_ web3 res]]
                (re-frame/dispatch [::fetch-scoops-for-sale web3])
+               (dissoc db :loading?)))
+
+   (re-frame/reg-event-db
+    ::approve
+    (fn-traced [db [_ web3 id to]]
+               (web3-eth/contract-call (:contract-instance web3)
+                                       :approve to id
+                                       {:gas 4700000
+                                        :gas-price 100000000000}
+                                       (fn [err tx-hash]
+                                         (if err
+                                           (js/console.log err)
+                                           (web3/wait-for-mined web3 tx-hash
+                                                                #(js/console.log "pending")
+                                                                #(re-frame/dispatch [::approve-success web3 %])))))
+               (assoc db :loading? {:message "Approving..."})))
+
+   (re-frame/reg-event-db
+    ::approve-success
+    (fn-traced [db [_ web3 res]]
+               (re-frame/dispatch [::fetch-scoops-for-sale web3])
+               (dissoc db :loading?)))
+
+   (re-frame/reg-event-db
+    ::purchase
+    (fn-traced [db [_ web3 id price]]
+               (web3-eth/contract-call (:contract-instance web3)
+                                       :purchase id
+                                       {:gas 4700000
+                                        :gas-price 100000000000
+                                        :value price}
+                                       (fn [err tx-hash]
+                                         (if err
+                                           (js/console.log err)
+                                           (web3/wait-for-mined web3 tx-hash
+                                                                #(js/console.log "pending")
+                                                                #(re-frame/dispatch [::purchase-success web3 %])))))
+               (assoc db :loading? {:message "Purchasing..."})))
+
+   (re-frame/reg-event-db
+    ::purchase-success
+    (fn-traced [db [_ web3 res]]
+               (re-frame/dispatch [::fetch-scoops-for-sale web3])
                (dissoc db :loading?)))])
+
 
 (defmethod ig/halt-key! :scoopmarket.module.events [_ _]
   (re-frame/clear-event))

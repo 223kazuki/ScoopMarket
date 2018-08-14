@@ -10,17 +10,16 @@
 
 (defn scoop-for-sale-card [{:keys [:configs :handlers]}]
   (let [{:keys [:scoop :ipfs :web3]} configs
-        {:keys [:request-handler :approve-handler :buy-handler]} handlers
-        {:keys [:id :name :timestamp :image-hash :price :author :meta :requestor]} scoop]
+        {:keys [:request-handler :approve-handler :purchase-handler]} handlers
+        {:keys [:id :name :timestamp :image-hash :price :author :owner :meta :requestor :approved]} scoop]
     (reagent/create-class
      {:component-did-mount
       #(when (nil? image-hash)
-         (re-frame/dispatch [::events/fetch-scoop-for-sale web3 id]))
+         (re-frame/dispatch [::events/fetch-scoop-for-sale web3 id])
+         (re-frame/dispatch [::events/fetch-scoop-for-sale-approved web3 id]))
 
       :reagent-render
       (fn []
-        (println requestor)
-        (println (to-decimal requestor))
         (when image-hash
           (let [image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)]
             [sa/Card {:style {:width "100%"}}
@@ -36,18 +35,22 @@
                [:span (str price " wei")]]]
              [sa/CardContent
               (cond
-                (and (== 0 (to-decimal requestor))
-                     ;; TODO: not mine.
-                     )
-                [sa/Button {:on-click request-handler} "Request to buy"]
+                (and (not= (:my-address web3) owner)
+                     (== 0 (to-decimal requestor)))
+                [sa/Button {:on-click request-handler} "Request purchase"]
 
-                (and (not= 0 (to-decimal requestor))
-                     ;; TODO: mine.
-                     )
-                [sa/Button {:on-click approve-handler} "Approve to buy"]
+                (and (= (:my-address web3) owner)
+                     (not= 0 (to-decimal requestor))
+                     (== 0 (to-decimal approved)))
+                [sa/Button {:on-click approve-handler} (str "Approve purchase to "
+                                                            requestor)]
 
-                true ;; TODO: check approved
-                [sa/Button {:on-click buy-handler} "Buy"]
+                (and (not= (:my-address web3) owner)
+                     (not= 0 (to-decimal approved))
+                     (== (to-decimal (:my-address web3)) (to-decimal approved)));; TODO: check approved
+                [sa/Button {:on-click purchase-handler} "Purchase"]
+
+                ;; TODO: Cancel
 
                 :else
                 [:div])]])))})))
@@ -64,7 +67,8 @@
 
       :reagent-render
       (fn []
-        (let [web3 @web3 ipfs @ipfs uport @uport]
+        (let [web3 @web3 ipfs @ipfs uport @uport
+              my-address (:my-address web3)]
           [:div
            [sa/Header {:as "h1"} "Market"]
            [sa/Grid {:columns (if mobile? 1 3)}
@@ -76,6 +80,7 @@
                  :handlers {:request-handler
                             #(re-frame/dispatch [::events/request web3 (name id)])
                             :approve-handler
-                            #(re-frame/dispatch [::events/approve web3 (name id)])
-                            :buy-handler
-                            #(re-frame/dispatch [::events/buy web3 (name id)])}}]])]]))})))
+                            #(re-frame/dispatch [::events/approve web3
+                                                 (name id) (:requestor scoop)])
+                            :purchase-handler
+                            #(re-frame/dispatch [::events/purchase web3 (name id) (:price scoop)])}}]])]]))})))

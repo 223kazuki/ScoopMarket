@@ -70,6 +70,7 @@ contract Scoop is ERC721Token, Ownable {
     function scoop(uint _tokenID) external view returns (uint, string, uint, string, uint, bool, string, address, address, address) {
         ScoopToken memory _scoop = scoops[_tokenID];
         address owner = tokenOwner[_tokenID];
+        
         return (_tokenID, _scoop.name, _scoop.timestamp, _scoop.imageURI, _scoop.price, _scoop.forSale, 
             _scoop.metaDataURI, _scoop.author, owner, _scoop.requestor);
     }
@@ -79,7 +80,7 @@ contract Scoop is ERC721Token, Ownable {
         _scoop.requestor = msg.sender;
     }
 
-    function approve(address _to, uint256 _tokenID) public {
+    function approve(address _to, uint256 _tokenID) public onlyOwnerOf(_tokenID) {
         require(_to == scoops[_tokenID].requestor);
         super.approve(_to, _tokenID);
     }
