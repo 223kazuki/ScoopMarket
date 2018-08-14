@@ -21,7 +21,8 @@
       :reagent-render
       (fn []
         (when image-hash
-          (let [image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)]
+          (let [image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)
+                tags (:tags meta)]
             [sa/Card {:style {:width "100%"}}
              [:div {:style {:display "table-cell" :width "100%" :height "210px"
                             :padding-top "5px" :text-align "center" :vertical-align "middle"}}
@@ -33,6 +34,11 @@
                [:span.date (str "Uploaded : " (.format (.unix js/moment timestamp)
                                                        "YYYY/MM/DD HH:mm:ss"))] [:br]
                [:span (str price " wei")]]]
+             [sa/CardContent
+              (for [tag tags]
+                ^{:key tag}
+                [sa/Label {:style {:margin-top "3px"}}
+                 tag])]
              [sa/CardContent
               (cond
                 (and (not= (:my-address web3) owner)

@@ -168,7 +168,7 @@
                             (let [meta (js->clj (.parse js/JSON
                                                         (.toString file "utf8"))
                                                 :keywordize-keys true)]
-                              (re-frame/dispatch [::fetch-meta-success id meta]))))))
+                              (re-frame/dispatch [::fetch-meta-for-sale-success id meta]))))))
                  (-> db
                      (dissoc :loading?)
                      (update-in [:scoops-for-sale (keyword (str id))]
@@ -199,6 +199,11 @@
     ::fetch-meta-success
     (fn-traced [db [_ id meta]]
                (assoc-in db [:scoops (keyword (str id)) :meta] meta)))
+
+   (re-frame/reg-event-db
+    ::fetch-meta-for-sale-success
+    (fn-traced [db [_ id meta]]
+               (assoc-in db [:scoops-for-sale (keyword (str id)) :meta] meta)))
 
    (re-frame/reg-event-db
     ::mint
