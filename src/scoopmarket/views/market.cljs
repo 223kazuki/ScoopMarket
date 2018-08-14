@@ -5,12 +5,13 @@
             [scoopmarket.module.events :as events]
             [soda-ash.core :as sa]
             [cljsjs.semantic-ui-react]
-            [cljsjs.moment]))
+            [cljsjs.moment]
+            [cljs-web3.core :refer [to-decimal]]))
 
 (defn scoop-for-sale-card [{:keys [:configs :handlers]}]
   (let [{:keys [:scoop :ipfs :web3]} configs
-        {:keys [:request-to-buy-handler :approve-to-buy-handler :buy-handler]} handlers
-        {:keys [:id :name :timestamp :image-hash :price :author :meta]} scoop]
+        {:keys [:request-handler :approve-handler :buy-handler]} handlers
+        {:keys [:id :name :timestamp :image-hash :price :author :meta :requestor]} scoop]
     (reagent/create-class
      {:component-did-mount
       #(when (nil? image-hash)
@@ -18,6 +19,8 @@
 
       :reagent-render
       (fn []
+        (println requestor)
+        (println (to-decimal requestor))
         (when image-hash
           (let [image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)]
             [sa/Card {:style {:width "100%"}}
@@ -32,11 +35,24 @@
                                                        "YYYY/MM/DD HH:mm:ss"))] [:br]
                [:span (str price " wei")]]]
              [sa/CardContent
-              [sa/Button {:on-click request-to-buy-handler} "Request to buy"]
-              [sa/Button {:on-click request-to-buy-handler} "Approve to buy"]
-              [sa/Button {:on-click request-to-buy-handler} "Buy"]]])))})))
+              (cond
+                (and (== 0 (to-decimal requestor))
+                     ;; TODO: not mine.
+                     )
+                [sa/Button {:on-click request-handler} "Request to buy"]
 
-(defn market-panel []
+                (and (not= 0 (to-decimal requestor))
+                     ;; TODO: mine.
+                     )
+                [sa/Button {:on-click approve-handler} "Approve to buy"]
+
+                true ;; TODO: check approved
+                [sa/Button {:on-click buy-handler} "Buy"]
+
+                :else
+                [:div])]])))})))
+
+(defn market-panel [mobile? _]
   (let [scoops-for-sale (re-frame/subscribe [::subs/scoops-for-sale])
         credential (re-frame/subscribe [::subs/credential])
         web3 (re-frame/subscribe [::subs/web3])
@@ -47,15 +63,19 @@
       #(re-frame/dispatch [::events/fetch-scoops-for-sale @web3])
 
       :reagent-render
-      (let []
-        (fn []
-          (let [web3 @web3 ipfs @ipfs uport @uport]
-            [:div
-             [sa/Header {:as "h1"} "Market"]
-             [sa/Grid {:doubling true :columns 3}
-              (for [[_ scoop] (sort-by key @scoops-for-sale)]
-                ^{:key scoop}
-                [sa/GridColumn
-                 [scoop-for-sale-card {:configs {:scoop scoop :web3 web3 :ipfs ipfs}
-                                       :handlers {}}]])]
-             ])))})))
+      (fn []
+        (let [web3 @web3 ipfs @ipfs uport @uport]
+          [:div
+           [sa/Header {:as "h1"} "Market"]
+           [sa/Grid {:columns (if mobile? 1 3)}
+            (for [[id scoop] (sort-by key @scoops-for-sale)]
+              ^{:key scoop}
+              [sa/GridColumn
+               [scoop-for-sale-card
+                {:configs {:scoop scoop :web3 web3}
+                 :handlers {:request-handler
+                            #(re-frame/dispatch [::events/request web3 (name id)])
+                            :approve-handler
+                            #(re-frame/dispatch [::events/approve web3 (name id)])
+                            :buy-handler
+                            #(re-frame/dispatch [::events/buy web3 (name id)])}}]])]]))})))

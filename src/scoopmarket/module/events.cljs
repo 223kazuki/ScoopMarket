@@ -174,7 +174,7 @@
                      (update-in [:scoops-for-sale (keyword (str id))]
                                 assoc :id id :name name :timestamp timestamp :image-hash image-hash
                                 :price price :for-sale? for-sale? :author author :meta-hash meta-hash
-                                :owner owner requestor requestor)))))
+                                :owner owner :requestor requestor)))))
 
 
    (re-frame/reg-event-db
@@ -226,6 +226,28 @@
     ::update-meta-success
     (fn-traced [db [_ web3 res]]
                (re-frame/dispatch [::fetch-scoops web3])
+               (dissoc db :loading?)))
+
+   (re-frame/reg-event-db
+    ::request
+    (fn-traced [db [_ web3 id]]
+               (println id)
+               (web3-eth/contract-call (:contract-instance web3)
+                                       :request id
+                                       {:gas 4700000
+                                        :gas-price 100000000000}
+                                       (fn [err tx-hash]
+                                         (if err
+                                           (js/console.log err)
+                                           (web3/wait-for-mined web3 tx-hash
+                                                                #(js/console.log "pending")
+                                                                #(re-frame/dispatch [::request-success web3 %])))))
+               (assoc db :loading? {:message "Minting..."})))
+
+   (re-frame/reg-event-db
+    ::request-success
+    (fn-traced [db [_ web3 res]]
+               (re-frame/dispatch [::fetch-scoops-for-sale web3])
                (dissoc db :loading?)))])
 
 (defmethod ig/halt-key! :scoopmarket.module.events [_ _]

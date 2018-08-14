@@ -75,7 +75,6 @@ contract Scoop is ERC721Token, Ownable {
     }
 
     function request(uint256 _tokenID) external payable {
-        require(scoops[_tokenID].price / 10 <= msg.value);
         ScoopToken storage _scoop = scoops[_tokenID];
         _scoop.requestor = msg.sender;
     }

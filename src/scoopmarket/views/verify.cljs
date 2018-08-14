@@ -7,7 +7,7 @@
             [cljsjs.semantic-ui-react]
             [cljsjs.moment]))
 
-(defn verify-panel [route-params]
+(defn verify-panel [_ route-params]
   (let [{:keys [:id]} route-params
         web3 @(re-frame/subscribe [::subs/web3])
         scoops (re-frame/subscribe [::subs/scoops])]

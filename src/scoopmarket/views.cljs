@@ -23,7 +23,7 @@
 (def css-transition
   (reagent/adapt-react-class js/ReactTransitionGroup.CSSTransition))
 
-(defn main-container []
+(defn main-container [mobile?]
   (let [loading? (re-frame/subscribe [::subs/loading?])
         active-page (re-frame/subscribe [::subs/active-page])
         web3 (re-frame/subscribe [::subs/web3])]
@@ -51,7 +51,7 @@
                             :classNames "pageChange"
                             :timeout 500
                             :className "transition"}
-            [(panels @active-page) (:route-params @active-page)]]]]))]))
+            [(panels @active-page) mobile? (:route-params @active-page)]]]]))]))
 
 (defn responsible-container []
   (let [sidebar-opened (re-frame/subscribe [::subs/sidebar-opened])]
@@ -63,7 +63,7 @@
          "ScoopMarket"]
         [sa/MenuItem {:as "a" :href "/"} "My Page"]
         [sa/MenuItem {:as "a" :href "/market"} "Market"]]]
-      [main-container]]
+      [main-container false]]
      [sa/Responsive {:max-width 767}
       [sa/SidebarPushable
        [sa/Sidebar {:as (aget js/semanticUIReact "Menu") :animation "push"
@@ -84,4 +84,5 @@
                     :style {:border "none"}}
            [sa/MenuItem {:on-click #(re-frame/dispatch [::events/toggle-sidebar])}
             [sa/Icon {:name "sidebar"}]]]
-          [main-container]]]]]]]))
+          [:br]
+          [main-container true]]]]]]]))

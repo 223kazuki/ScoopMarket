@@ -169,7 +169,7 @@
                                      (empty? (:name @form)))
                        :on-click #(scoop-upload-handler @form)} "Mint"]]]]]])))
 
-(defn mypage-panel []
+(defn mypage-panel [_ _]
   (reagent/create-class
    {:component-did-mount
     #(let [web3 @(re-frame/subscribe [::subs/web3])]
