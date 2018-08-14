@@ -80,9 +80,21 @@ contract Scoop is ERC721Token, Ownable {
         _scoop.requestor = msg.sender;
     }
 
+    function cancel(uint256 _tokenID) external payable {
+        ScoopToken storage _scoop = scoops[_tokenID];
+        _scoop.requestor = address(0);
+        address owner = tokenOwner[_tokenID];
+        super.clearApproval(owner, _tokenID);
+    }
+
     function approve(address _to, uint256 _tokenID) public onlyOwnerOf(_tokenID) {
         require(_to == scoops[_tokenID].requestor);
         super.approve(_to, _tokenID);
+    }
+
+    function deny(uint256 _tokenID) external payable onlyOwnerOf(_tokenID) {
+        ScoopToken storage _scoop = scoops[_tokenID];
+        _scoop.requestor = address(0);
     }
 
     function purchase(uint256 _tokenID) external payable {

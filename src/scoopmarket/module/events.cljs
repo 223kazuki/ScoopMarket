@@ -204,7 +204,8 @@
    (re-frame/reg-event-db
     ::mint-success
     (fn-traced [db [_ web3 res]]
-               (re-frame/dispatch [::fetch-scoops web3])
+               (re-frame/dispatch [::refetch-scoops web3])
+               (re-frame/dispatch [::refetch-scoops-for-sale web3])
                (dissoc db :loading?)))
 
    (re-frame/reg-event-db
@@ -224,7 +225,8 @@
    (re-frame/reg-event-db
     ::update-meta-success
     (fn-traced [db [_ web3 res]]
-               (re-frame/dispatch [::fetch-scoops web3])
+               (re-frame/dispatch [::refetch-scoops web3])
+               (re-frame/dispatch [::refetch-scoops-for-sale web3])
                (dissoc db :loading?)))
 
    (re-frame/reg-event-db
@@ -245,7 +247,7 @@
    (re-frame/reg-event-db
     ::request-success
     (fn-traced [db [_ web3 res]]
-               (re-frame/dispatch [::fetch-scoops-for-sale web3])
+               (re-frame/dispatch [::refetch-scoops-for-sale web3])
                (dissoc db :loading?)))
 
    (re-frame/reg-event-db
@@ -266,7 +268,49 @@
    (re-frame/reg-event-db
     ::approve-success
     (fn-traced [db [_ web3 res]]
-               (re-frame/dispatch [::fetch-scoops-for-sale web3])
+               (re-frame/dispatch [::refetch-scoops-for-sale web3])
+               (dissoc db :loading?)))
+
+   (re-frame/reg-event-db
+    ::cancel
+    (fn-traced [db [_ web3 id]]
+               (web3-eth/contract-call (:contract-instance web3)
+                                       :cancel id
+                                       {:gas 4700000
+                                        :gas-price 100000000000}
+                                       (fn [err tx-hash]
+                                         (if err
+                                           (js/console.log err)
+                                           (web3/wait-for-mined web3 tx-hash
+                                                                #(js/console.log "pending")
+                                                                #(re-frame/dispatch [::cancel-success web3 %])))))
+               (assoc db :loading? {:message "Approving..."})))
+
+   (re-frame/reg-event-db
+    ::cancel-success
+    (fn-traced [db [_ web3 res]]
+               (re-frame/dispatch [::refetch-scoops-for-sale web3])
+               (dissoc db :loading?)))
+
+   (re-frame/reg-event-db
+    ::deny
+    (fn-traced [db [_ web3 id]]
+               (web3-eth/contract-call (:contract-instance web3)
+                                       :deny id
+                                       {:gas 4700000
+                                        :gas-price 100000000000}
+                                       (fn [err tx-hash]
+                                         (if err
+                                           (js/console.log err)
+                                           (web3/wait-for-mined web3 tx-hash
+                                                                #(js/console.log "pending")
+                                                                #(re-frame/dispatch [::deny-success web3 %])))))
+               (assoc db :loading? {:message "Approving..."})))
+
+   (re-frame/reg-event-db
+    ::deny-success
+    (fn-traced [db [_ web3 res]]
+               (re-frame/dispatch [::refetch-scoops-for-sale web3])
                (dissoc db :loading?)))
 
    (re-frame/reg-event-db
@@ -288,7 +332,8 @@
    (re-frame/reg-event-db
     ::purchase-success
     (fn-traced [db [_ web3 res]]
-               (re-frame/dispatch [::fetch-scoops-for-sale web3])
+               (re-frame/dispatch [::refetch-scoops web3])
+               (re-frame/dispatch [::refetch-scoops-for-sale web3])
                (dissoc db :loading?)))])
 
 
