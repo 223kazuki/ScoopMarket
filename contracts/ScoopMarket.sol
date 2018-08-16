@@ -9,7 +9,7 @@ import "../node_modules/openzeppelin-solidity/contracts/payment/PullPayment.sol"
 /** 
  * @title Scoop Market
  * @author Kazuki Tsutusmi
- * @notice A contract to trade "Scoop".
+ * @notice A contract to publish and trade "Scoop".
  * @dev This is a ERC-721 token implementation.
  */
 contract ScoopMarket is ERC721Token, Pausable, PullPayment {
