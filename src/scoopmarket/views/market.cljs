@@ -12,36 +12,29 @@
   (let [{:keys [:scoop :web3]} configs
         {:keys [:id :name :timestamp :image-hash :price :author :owner
                 :meta :requestor :approved]} scoop]
-    (reagent/create-class
-     {:component-did-mount
-      #(do
-         (when (nil? image-hash)
-           (re-frame/dispatch [::events/fetch-scoop web3 :scoops-for-sale id]))
-         (when (nil? approved)
-           (re-frame/dispatch [::events/fetch-scoop-approval web3 :scoops-for-sale id])))
-
-      :reagent-render
-      (fn []
-        (when image-hash
-          (let [image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)
-                tags (:tags meta)]
-            [sa/Card {:style {:width "100%"}}
-             [:div {:style {:display "table-cell" :width "100%" :height "210px"
-                            :padding-top "5px" :text-align "center" :vertical-align "middle"}}
-              [:img {:src image-uri :style {:height "100%" :max-height "200px"
-                                            :max-width "100%"}}]]
-             [sa/CardContent
-              [sa/CardHeader [:a {:href (str "/verify/" id)} name]]
-              [sa/CardMeta
-               [:span.date (str "Uploaded : " (.format (.unix js/moment timestamp)
-                                                       "YYYY/MM/DD HH:mm:ss"))] [:br]
-               [:span (str price " wei")]
-               (when meta
-                 [:<>
-                  [:br]
-                  "Tags: " (for [tag tags]
-                             ^{:key tag} [sa/Label {:style {:margin-top "3px"}} tag])])]]
-             contents])))})))
+    (when (nil? approved)
+      (re-frame/dispatch [::events/fetch-scoop-approval web3 :scoops-for-sale id]))
+    (if (nil? image-hash)
+      (re-frame/dispatch [::events/fetch-scoop web3 :scoops-for-sale id])
+      (let [image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)
+            tags (:tags meta)]
+        [sa/Card {:style {:width "100%"}}
+         [:div {:style {:display "table-cell" :width "100%" :height "210px"
+                        :padding-top "5px" :text-align "center" :vertical-align "middle"}}
+          [:img {:src image-uri :style {:height "100%" :max-height "200px"
+                                        :max-width "100%"}}]]
+         [sa/CardContent
+          [sa/CardHeader [:a {:href (str "/verify/" id)} name]]
+          [sa/CardMeta
+           [:span.date (str "Uploaded : " (.format (.unix js/moment timestamp)
+                                                   "YYYY/MM/DD HH:mm:ss"))] [:br]
+           [:span (str price " wei")]
+           (when meta
+             [:<>
+              [:br]
+              "Tags: " (for [tag tags]
+                         ^{:key tag} [sa/Label {:style {:margin-top "3px"}} tag])])]]
+         contents]))))
 
 (defn my-scoop-card [{:keys [:configs :handlers]}]
   (let [{:keys [:scoop :web3]} configs
@@ -67,7 +60,8 @@
     (fn []
       (let [requestor? (= (:my-address web3) requestor)
             requested? (not= 0 (to-decimal requestor))
-            approved? (= (:my-address web3) (to-decimal approved))]
+            approved? (= (:my-address web3) approved)]
+        (println requestor)
         [scoop-info {:configs configs}
          [sa/CardContent {:style {:color "black" :text-align "center"}}
           (if requested?
@@ -90,7 +84,7 @@
         ipfs (re-frame/subscribe [::subs/ipfs])
         uport (re-frame/subscribe [::subs/uport])]
     (reagent/create-class
-     {:component-did-mount
+     {:component-will-mount
       #(re-frame/dispatch [::events/fetch-scoops-for-sale @web3])
 
       :reagent-render

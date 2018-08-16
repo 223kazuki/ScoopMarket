@@ -34,6 +34,16 @@
       (:uport db)))
 
    (re-frame/reg-sub
+    ::mint-cost
+    (fn [db]
+      (:mint-cost db)))
+
+   (re-frame/reg-sub
+    ::credit
+    (fn [db]
+      (:credit db)))
+
+   (re-frame/reg-sub
     ::scoops
     (fn [db]
       (:scoops db)))

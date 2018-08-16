@@ -50,6 +50,7 @@
                                              (js/parseInt 16)
                                              (== network-id))
                                      dev)]
+                 (re-frame/dispatch [::fetch-credit web3])
                  (-> db
                      (assoc-in [:web3 :web3-instance] web3-instance)
                      (assoc-in [:web3 :contract-instance] contract-instance)
@@ -65,6 +66,39 @@
                (-> db
                    (assoc :message {:status :error :text (str result)})
                    (dissoc :loading?))))
+
+   (re-frame/reg-event-fx
+    ::fetch-credit
+    (fn-traced [{:keys [:db]} [_ web3]]
+               {:web3/call {:web3 (:web3-instance web3)
+                            :fns [{:instance (:contract-instance web3)
+                                   :fn :payments
+                                   :args [(:my-address web3)]
+                                   :on-success [::fetch-credit-success]
+                                   :on-error [::api-failure]}]}}))
+
+   (re-frame/reg-event-db
+    ::fetch-credit-success
+    (fn-traced [db [_ credit]]
+               (-> db
+                   (dissoc :loading?)
+                   (assoc :credit (js-invoke credit "toNumber")))))
+
+   (re-frame/reg-event-fx
+    ::fetch-mint-cost
+    (fn-traced [{:keys [:db]} [_ web3]]
+               {:web3/call {:web3 (:web3-instance web3)
+                            :fns [{:instance (:contract-instance web3)
+                                   :fn :mint-cost
+                                   :on-success [::fetch-mint-cost-success]
+                                   :on-error [::api-failure]}]}}))
+
+   (re-frame/reg-event-db
+    ::fetch-mint-cost-success
+    (fn-traced [db [_ mint-cost]]
+               (-> db
+                   (dissoc :loading?)
+                   (assoc :mint-cost (js-invoke mint-cost "toNumber")))))
 
    (re-frame/reg-event-fx
     ::fetch-scoops
@@ -170,7 +204,7 @@
 
    (re-frame/reg-event-db
     ::fetch-scoop-approval-success
-    (fn-traced [db [_ id db-key approved]]
+    (fn-traced [db [_ db-key id approved]]
                (-> db
                    (dissoc :loading?)
                    (update-in [db-key (keyword (str id))]
@@ -183,7 +217,8 @@
 
    (re-frame/reg-event-db
     ::mint
-    (fn-traced [db [_ web3 scoop]]
+    (fn-traced [db [_ web3 mint-cost scoop]]
+               (println mint-cost)
                (let [{:keys [:image-hash :name :for-sale? :price]} scoop
                      price (if-not (empty? price)
                              (js/parseInt price) 0)]
@@ -191,8 +226,7 @@
                                          :mint (or name "") price (or for-sale? false) image-hash
                                          {:gas 4700000
                                           :gas-price 100000000000
-                                          ;; TODO: Specify value.
-                                          :value 10000000000000000}
+                                          :value mint-cost}
                                          (fn [err tx-hash]
                                            (if err
                                              (js/console.log err)
@@ -333,10 +367,31 @@
    (re-frame/reg-event-db
     ::purchase-success
     (fn-traced [db [_ web3 res]]
+               (re-frame/dispatch [::fetch-credit web3])
                (re-frame/dispatch [::refetch-scoops web3])
                (re-frame/dispatch [::refetch-scoops-for-sale web3])
-               (dissoc db :loading?)))])
+               (dissoc db :loading?)))
 
+   (re-frame/reg-event-db
+    ::withdraw
+    (fn-traced [db [_ web3]]
+               (web3-eth/contract-call (:contract-instance web3)
+                                       :withdraw-payments
+                                       {:gas 4700000
+                                        :gas-price 100000000000}
+                                       (fn [err tx-hash]
+                                         (if err
+                                           (js/console.log err)
+                                           (web3/wait-for-mined web3 tx-hash
+                                                                #(js/console.log "pending")
+                                                                #(re-frame/dispatch [::withdraw-success web3 %])))))
+               (assoc db :loading? {:message "withdrawing..."})))
+
+   (re-frame/reg-event-db
+    ::withdraw-success
+    (fn-traced [db [_ web3]]
+               (re-frame/dispatch [::fetch-credit web3])
+               (dissoc db :loading?)))])
 
 (defmethod ig/halt-key! :scoopmarket.module.events [_ _]
   (re-frame/clear-event))

@@ -102,7 +102,7 @@
         {:keys [:id :name :timestamp :image-hash :price :for-sale? :author :meta]} scoop
         modal-open? (reagent/atom false)]
     (reagent/create-class
-     {:component-did-mount
+     {:component-will-mount
       #(when (nil? image-hash)
          (re-frame/dispatch [::events/fetch-scoop web3 :scoops id]))
 
@@ -221,38 +221,50 @@
         credential (re-frame/subscribe [::subs/credential])
         web3 (re-frame/subscribe [::subs/web3])
         ipfs (re-frame/subscribe [::subs/ipfs])
-        uport (re-frame/subscribe [::subs/uport])]
+        uport (re-frame/subscribe [::subs/uport])
+        credit (re-frame/subscribe [::subs/credit])
+        mint-cost (re-frame/subscribe [::subs/mint-cost])]
     (reagent/create-class
-     {:component-did-mount
-      #(re-frame/dispatch [::events/fetch-scoops @web3])
+     {:component-will-mount
+      #(do (re-frame/dispatch [::events/fetch-credit @web3])
+           (re-frame/dispatch [::events/fetch-mint-cost @web3])
+           (re-frame/dispatch [::events/fetch-scoops @web3]))
 
       :reagent-render
       (fn []
         (let [web3 @web3 ipfs @ipfs uport @uport
               {:keys [avatar name]} @credential]
-          [:div
-           [sa/Header {:as "h1"} "My Page"]
-           (when @credential
-             [sa/Segment {:text-align "center"}
-              [sa/Header {:as "h2"} name]
-              [:img {:src (:uri avatar)}]
-              [sa/Divider {:hidden true}]])
-           [sa/Label {:as "label" :class "button" :size "large"
-                      :on-click #(re-frame/dispatch [::events/refetch-scoops web3])}
-            [sa/Icon {:name "undo" :style {:margin 0}}]]
-           [scoop-uploader {:configs {:ipfs ipfs}
-                            :handlers {:scoop-upload-handler
-                                       (fn [scoop]
-                                         (re-frame/dispatch [::events/mint web3 scoop]))}}]
-           (when-not @credential
+          (when (and @mint-cost @credit @scoops)
+            [:div
+             [sa/Header {:as "h1"} "My Page"]
+             (when @credential
+               [sa/Segment {:text-align "center"}
+                [sa/Header {:as "h2"} name]
+                [:img {:src (:uri avatar)}]
+                [sa/Divider {:hidden true}]])
+             [sa/Header {:as "h2"} (str "Your credit is " @credit " wei")]
              [sa/Label {:as "label" :class "button" :size "large"
-                        :on-click #(re-frame/dispatch [::events/connect-uport uport web3])}
-              [sa/Icon {:name "id card"}] "Connect uPort"])
-           [sa/Divider]
-           (if-let [scoops (sort-by key @scoops)]
-             [sa/Grid {:columns (if mobile? 1 3)}
-              (for [[_ scoop] scoops]
-                ^{:key scoop}
-                [sa/GridColumn
-                 [scoop-card {:configs {:scoop scoop :web3 web3 :ipfs ipfs}}]])]
-             "No scoops.")]))})))
+                        :on-click #(do (re-frame/dispatch [::events/fetch-credit web3])
+                                       (re-frame/dispatch [::events/refetch-scoops web3]))}
+              [sa/Icon {:name "undo" :style {:margin 0}}]]
+             [scoop-uploader {:configs {:ipfs ipfs}
+                              :handlers {:scoop-upload-handler
+                                         (fn [scoop]
+                                           (re-frame/dispatch [::events/mint web3 @mint-cost scoop]))}}]
+             (when-not @credential
+               [sa/Label {:as "label" :class "button" :size "large"
+                          :on-click #(re-frame/dispatch [::events/connect-uport uport web3])}
+                [sa/Icon {:name "id card"}] "Connect uPort"])
+             (when-not (zero? @credit)
+               [sa/Label {:as "label" :class "button" :size "large"
+                          :on-click #(re-frame/dispatch [::events/withdraw web3])}
+                [sa/Icon {:name "money"}] "Withdraw credit"])
+             [sa/Divider]
+             (let [scoops (sort-by key @scoops)]
+               (if-not (empty? scoops)
+                 [sa/Grid {:columns (if mobile? 1 3)}
+                  (for [[_ scoop] scoops]
+                    ^{:key scoop}
+                    [sa/GridColumn
+                     [scoop-card {:configs {:scoop scoop :web3 web3 :ipfs ipfs}}]])]
+                 [:span "No scoops."]))])))})))
