@@ -47,7 +47,7 @@
        (when (:contract-instance @web3)
          [sa/Container {:className "mainContainer" :style {:marginTop "7em"}}
           [transition-group
-           [css-transition {:key @active-page
+           [css-transition {:key (:panel @active-page)
                             :classNames "pageChange"
                             :timeout 500
                             :className "transition"}
