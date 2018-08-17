@@ -191,9 +191,10 @@
     ::request-credential-success
     (fn-traced [db [_ uport web3 credential]]
                (let [{:keys [:address :avatar]} credential
-                     {:keys [:contract :contract-address :network-id :dev]} web3
+                     {:keys [:contract :network-id :dev]} web3
                      {:keys [:abi :networks]} contract
                      web3-instance (js-invoke uport "getWeb3")
+                     contract-address (-> networks :4 :address)
                      contract-instance
                      (web3-eth/contract-at web3-instance abi contract-address)
                      my-address (when (uport/is-mnid? address)
