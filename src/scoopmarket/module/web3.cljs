@@ -22,9 +22,7 @@
 
 (defmethod ig/init-key :scoopmarket.module.web3 [_ {:keys [contract-json network-id dev]}]
   (when-let [web3-instance (aget js/window "web3")]
-    (let [{:keys [abi networks] :as contract} (-> contract-json
-                                                  (js/JSON.parse)
-                                                  (js->clj :keywordize-keys true))
+    (let [{:keys [abi networks] :as contract} contract-json
           network-id-key (keyword (str network-id))
           address (-> networks network-id-key :address)]
       {:web3-instance web3-instance

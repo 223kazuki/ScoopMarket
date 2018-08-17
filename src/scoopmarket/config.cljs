@@ -11,13 +11,18 @@
             [scoopmarket.module.routes])
   (:require-macros [scoopmarket.macro :refer [slurp]]))
 
-(def contract-json (slurp "build/contracts/ScoopMarket.json"))
+(defn get-contract-json []
+  (-> (slurp "resources/public/contracts/ScoopMarket.json")
+      (js/JSON.parse)
+      (js->clj :keywordize-keys true)))
+
 (def debug? ^boolean goog.DEBUG)
 
-(def system-conf
+(defn system-conf [contract-json]
   {:scoopmarket.module.web3
    {:network-id (if debug? 1533140371286 4)
-    :contract-json contract-json
+    :contract-json (or contract-json
+                       (get-contract-json))
     :dev debug?}
 
    :scoopmarket.module.uport
