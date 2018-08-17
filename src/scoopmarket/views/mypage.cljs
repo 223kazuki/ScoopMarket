@@ -20,6 +20,11 @@
               (let [n (aget (.-target el) "name")
                     v (aget (.-target el) "value")]
                 (swap! form assoc-in [(keyword n)] v)))
+            (input-price-handler [el]
+              (let [n (aget (.-target el) "name")
+                    v (aget (.-target el) "value")]
+                (when (<= 0 (js/parseInt v) 100000000000000000000)
+                  (swap! form assoc-in [(keyword n)] v))))
             (check-handler [_ el]
               (let [n (aget el "name")
                     v (aget el "checked")]
@@ -56,6 +61,7 @@
                  [:label "Scoop Name"]
                  [:input {:placeholder "My Scoop"
                           :name "name"
+                          :maxLength 50
                           :value (:name @form "")
                           :on-change input-text-handler}]]
                 [sa/FormField
@@ -70,7 +76,7 @@
                           :type "number"
                           :disabled (not (:for-sale? @form false))
                           :value (:price @form "")
-                          :on-change input-text-handler}]]
+                          :on-change input-price-handler}]]
                 [sa/FormField
                  [:label "Tags"]
                  (for [tag tags]
@@ -162,6 +168,12 @@
           (let [n (aget (.-target el) "name")
                 v (aget (.-target el) "value")]
             (swap! form assoc-in [(keyword n)] v)))
+        input-price-handler
+        (fn [el]
+          (let [n (aget (.-target el) "name")
+                v (aget (.-target el) "value")]
+            (when (<= 0 (js/parseInt v) 100000000000000000000)
+              (swap! form assoc-in [(keyword n)] v))))
         check-handler
         (fn [_ el]
           (let [n (aget el "name")
@@ -190,6 +202,7 @@
              [:label "Scoop Name"]
              [:input {:placeholder "My Scoop"
                       :name "name"
+                      :maxLength 50
                       :value (:name @form "")
                       :on-change input-text-handler}]]
             [sa/FormField
@@ -204,7 +217,7 @@
                       :type "number"
                       :disabled (not (:for-sale? @form false))
                       :value (:price @form "")
-                      :on-change input-text-handler}]]]
+                      :on-change input-price-handler}]]]
            [sa/Divider {:hidden true}]
            [sa/Button {:disabled (or (nil? (:name @form))
                                      (empty? (:name @form)))
