@@ -1,8 +1,10 @@
 var HDWalletProvider = require("truffle-hdwallet-provider");
+var path = require('path');
 var mnemonic = process.env.MNEMONIC;
 var accessToken = process.env.INFURA_ACCESS_TOKEN;
 
 module.exports = {
+  contracts_build_directory: path.resolve(__dirname, 'resources/public/contracts'),
   networks: {
     rinkeby: {
       provider: function() {
