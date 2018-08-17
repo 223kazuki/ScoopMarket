@@ -8,7 +8,7 @@
             [district0x.re-frame.web3-fx]
             [ajax.core :as ajax]
             [cljs-web3.eth :as web3-eth]
-            [meta-merge.core :refer [meta-merge]]))
+            [clojure.core.async :refer [go <! timeout]]))
 
 (defmethod ig/init-key :scoopmarket.module.events [_ _]
   [(re-frame/reg-event-db
@@ -27,6 +27,7 @@
                  (re-frame/dispatch [::watch-canceled web3])
                  (re-frame/dispatch [::watch-denied web3])
                  (re-frame/dispatch [::watch-purchased web3])
+                 (re-frame/dispatch [::watch-approval web3])
                  (re-frame/dispatch [::watch-mint-cost-set web3])
                  (re-frame/dispatch [::watch-payments-withdrawed web3]))
                db))
@@ -131,15 +132,17 @@
 
    (re-frame/reg-event-db
     ::minted
-    (fn-traced [db [_ web3 result]]
+    (fn-traced [db [_ web3 event info]]
+               (js/console.log "Event detected:" (:event info) ": " (pr-str event))
                (re-frame/dispatch [::fetch-scoops web3])
                (re-frame/dispatch [::fetch-scoops-for-sale web3])
                db))
 
    (re-frame/reg-event-db
     ::scoop-updated
-    (fn-traced [db [_ web3 result]]
-               (let [token-id (js-invoke (:_token-id result) "toNumber")]
+    (fn-traced [db [_ web3 event info]]
+               (js/console.log "Event detected:" (:event info) ": " (pr-str event))
+               (let [token-id (js-invoke (:_token-id event) "toNumber")]
                  (re-frame/dispatch [::fetch-scoop web3 :scoops token-id])
                  (re-frame/dispatch [::fetch-scoop web3 :scoops-for-sale token-id])
                  (re-frame/dispatch [::fetch-scoop-approval web3 :scoops-for-sale token-id])
@@ -147,22 +150,23 @@
 
    (re-frame/reg-event-db
     ::scoop-transfered
-    (fn-traced [db [_ web3 result]]
+    (fn-traced [db [_ web3 event info]]
+               (js/console.log "Event detected:" (:event info) ": " (pr-str event))
                (re-frame/dispatch [::fetch-scoops web3])
                (re-frame/dispatch [::fetch-scoops-for-sale web3])
                db))
 
    (re-frame/reg-event-db
     ::mint-cost-set
-    (fn-traced [db [_ web3 result]]
+    (fn-traced [db [_ web3 event info]]
+               (js/console.log "Event detected:" (:event info) ": " (pr-str event))
                (re-frame/dispatch [::fetch-mint-cost web3])
                db))
 
-
-
    (re-frame/reg-event-db
     ::payments-withdrawed
-    (fn-traced [db [_ web3 result]]
+    (fn-traced [db [_ web3 event info]]
+               (js/console.log "Event detected:" (:event info) ": " (pr-str event))
                (re-frame/dispatch [::fetch-credit web3])
                db))
 
@@ -205,8 +209,21 @@
                                  :contract-instance contract-instance
                                  :my-address my-address
                                  :is-rinkeby? is-rinkeby?)]
-                 (re-frame/dispatch [::fetch-credit web3])
-                 (re-frame/dispatch [::watch-events web3])
+                 ;; TODO: Web3 instance of uPort is not suppport websocket.
+                 ;; TODO: And rinkby infura doesn't support filter events.
+                 ;; TODO: So we can't use event watcher here now.
+                 (letfn [(watch-loop []
+                           (go
+                             (<! (timeout 10000))
+                             (fetch)))
+                         (fetch []
+                           (js/console.log "Fetch...")
+                           (re-frame/dispatch [::fetch-mint-cost web3])
+                           (re-frame/dispatch [::fetch-credit web3])
+                           (re-frame/dispatch [::fetch-scoops web3])
+                           (re-frame/dispatch [::fetch-scoops-for-sale web3])
+                           (watch-loop))]
+                   (fetch))
                  (-> db
                      (assoc :web3 web3)
                      (assoc :credential credential)

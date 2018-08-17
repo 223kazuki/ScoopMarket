@@ -7,7 +7,6 @@
                  [reagent "0.8.0"]
                  [re-frame "0.10.5"]
                  [integrant "0.6.3"]
-                 [meta-merge "1.0.0"]
                  [cljsjs/buffer "5.1.0-1"]
                  [cljsjs/ipfs-api "18.1.1-0"]
                  [cljsjs/moment "2.22.0-0"]
