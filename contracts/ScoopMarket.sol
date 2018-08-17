@@ -1,10 +1,9 @@
 pragma solidity ^0.4.23;
 
-// TODO: Delete ../node_modules 
-import "../node_modules/openzeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
-import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "../node_modules/openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
-import "../node_modules/openzeppelin-solidity/contracts/payment/PullPayment.sol";
+import "openzeppelin-solidity/contracts/token/ERC721/ERC721Token.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
+import "openzeppelin-solidity/contracts/payment/PullPayment.sol";
 
 /** 
  * @title Scoop Market
