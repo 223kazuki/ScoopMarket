@@ -18,12 +18,12 @@
 
 (def debug? ^boolean goog.DEBUG)
 
-(defn system-conf [contract-json]
+(defn system-conf [localhost? contract-json]
   {:scoopmarket.module.web3
-   {:network-id (if debug? 1533140371286 4)
+   {:network-id (if localhost? 1533140371286 4)
     :contract-json (or contract-json
                        (get-contract-json))
-    :dev debug?}
+    :dev localhost?}
 
    :scoopmarket.module.uport
    {:app-name "Kazuki's new app"
