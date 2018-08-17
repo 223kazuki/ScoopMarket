@@ -139,6 +139,8 @@
                                              (when for-sale?
                                                (re-frame/dispatch [::fetch-scoop web3
                                                                    :scoops-for-sale id])
+                                               (re-frame/dispatch [::fetch-scoop-approval web3
+                                                                   :scoops-for-sale id])
                                                id)))
                               (filter some?))]
                  (-> db
