@@ -107,26 +107,19 @@
                             :fns [{:instance (:contract-instance web3)
                                    :fn :scoops-of
                                    :args [(:my-address web3)]
-                                   :on-success [::fetch-scoops-success]
+                                   :on-success [::fetch-scoops-success web3]
                                    :on-error [::api-failure]}]}}))
 
    (re-frame/reg-event-db
     ::fetch-scoops-success
-    (fn-traced [db [_ scoops]]
-               (-> db
-                   (dissoc :loading?)
-                   (assoc :scoops (meta-merge
-                                   (:scoops db)
-                                   (->> scoops
-                                        (map #(let [id (js-invoke % "toNumber")]
-                                                (hash-map (keyword (str id)) {:id id})))
-                                        (into {})))))))
-
-   (re-frame/reg-event-db
-    ::refetch-scoops
-    (fn-traced [db [_ web3]]
-               (re-frame/dispatch [::fetch-scoops web3])
-               (dissoc db :scoops)))
+    (fn-traced [db [_ web3 scoops]]
+               (let [ids (map #(let [id (js-invoke % "toNumber")]
+                                 (re-frame/dispatch [::fetch-scoop web3 :scoops id])
+                                 id) scoops)]
+                 (-> db
+                     (dissoc :loading?)
+                     (assoc :scoops (select-keys (:scoops db)
+                                                 (map #(keyword (str %)) ids)))))))
 
    (re-frame/reg-event-fx
     ::fetch-scoops-for-sale
@@ -135,27 +128,23 @@
                             :fns [{:instance (:contract-instance web3)
                                    :fn :scoops-for-sale
                                    :args []
-                                   :on-success [::fetch-scoops-for-sale-success]
+                                   :on-success [::fetch-scoops-for-sale-success web3]
                                    :on-error [::api-failure]}]}}))
 
    (re-frame/reg-event-db
     ::fetch-scoops-for-sale-success
-    (fn-traced [db [_ scoops-for-sale]]
-               (-> db
-                   (dissoc :loading?)
-                   (assoc :scoops-for-sale (meta-merge
-                                            (:scoops-for-sale db)
-                                            (->> scoops-for-sale
-                                                 (map-indexed (fn [id for-sale?]
-                                                                (when for-sale?
-                                                                  (hash-map (keyword (str id)) {:id id}))))
-                                                 (into {})))))))
-
-   (re-frame/reg-event-db
-    ::refetch-scoops-for-sale
-    (fn-traced [db [_ web3]]
-               (re-frame/dispatch [::fetch-scoops-for-sale web3])
-               (dissoc db :scoops-for-sale)))
+    (fn-traced [db [_ web3 scoops-for-sale]]
+               (let [ids (->> scoops-for-sale
+                              (map-indexed (fn [id for-sale?]
+                                             (when for-sale?
+                                               (re-frame/dispatch [::fetch-scoop web3
+                                                                   :scoops-for-sale id])
+                                               id)))
+                              (filter some?))]
+                 (-> db
+                     (dissoc :loading?)
+                     (assoc :scoops-for-sale (select-keys (:scoops-for-sale db)
+                                                          (map #(keyword (str %)) ids)))))))
 
    (re-frame/reg-event-fx
     ::fetch-scoop
@@ -238,8 +227,8 @@
    (re-frame/reg-event-db
     ::mint-success
     (fn-traced [db [_ web3 res]]
-               (re-frame/dispatch [::refetch-scoops web3])
-               (re-frame/dispatch [::refetch-scoops-for-sale web3])
+               (re-frame/dispatch [::fetch-scoops web3])
+               (re-frame/dispatch [::fetch-scoops-for-sale web3])
                (dissoc db :loading?)))
 
    (re-frame/reg-event-db
@@ -260,8 +249,8 @@
    (re-frame/reg-event-db
     ::edit-scoop-success
     (fn-traced [db [_ web3 res]]
-               (re-frame/dispatch [::refetch-scoops web3])
-               (re-frame/dispatch [::refetch-scoops-for-sale web3])
+               (re-frame/dispatch [::fetch-scoops web3])
+               (re-frame/dispatch [::fetch-scoops-for-sale web3])
                (dissoc db :loading?)))
 
    (re-frame/reg-event-db
@@ -282,7 +271,7 @@
    (re-frame/reg-event-db
     ::request-success
     (fn-traced [db [_ web3 res]]
-               (re-frame/dispatch [::refetch-scoops-for-sale web3])
+               (re-frame/dispatch [::fetch-scoops-for-sale web3])
                (dissoc db :loading?)))
 
    (re-frame/reg-event-db
@@ -303,7 +292,7 @@
    (re-frame/reg-event-db
     ::approve-success
     (fn-traced [db [_ web3 res]]
-               (re-frame/dispatch [::refetch-scoops-for-sale web3])
+               (re-frame/dispatch [::fetch-scoops-for-sale web3])
                (dissoc db :loading?)))
 
    (re-frame/reg-event-db
@@ -324,7 +313,7 @@
    (re-frame/reg-event-db
     ::cancel-success
     (fn-traced [db [_ web3 res]]
-               (re-frame/dispatch [::refetch-scoops-for-sale web3])
+               (re-frame/dispatch [::fetch-scoops-for-sale web3])
                (dissoc db :loading?)))
 
    (re-frame/reg-event-db
@@ -345,7 +334,7 @@
    (re-frame/reg-event-db
     ::deny-success
     (fn-traced [db [_ web3 res]]
-               (re-frame/dispatch [::refetch-scoops-for-sale web3])
+               (re-frame/dispatch [::fetch-scoops-for-sale web3])
                (dissoc db :loading?)))
 
    (re-frame/reg-event-db
@@ -368,8 +357,8 @@
     ::purchase-success
     (fn-traced [db [_ web3 res]]
                (re-frame/dispatch [::fetch-credit web3])
-               (re-frame/dispatch [::refetch-scoops web3])
-               (re-frame/dispatch [::refetch-scoops-for-sale web3])
+               (re-frame/dispatch [::fetch-scoops web3])
+               (re-frame/dispatch [::fetch-scoops-for-sale web3])
                (dissoc db :loading?)))
 
    (re-frame/reg-event-db

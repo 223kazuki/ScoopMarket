@@ -101,46 +101,40 @@
   (let [{:keys [:scoop :ipfs :web3]} configs
         {:keys [:id :name :timestamp :image-hash :price :for-sale? :author :meta]} scoop
         modal-open? (reagent/atom false)]
-    (reagent/create-class
-     {:component-will-mount
-      #(when (nil? image-hash)
-         (re-frame/dispatch [::events/fetch-scoop web3 :scoops id]))
-
-      :reagent-render
-      (fn []
-        (when image-hash
-          (let [image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)]
-            [:<>
-             [sa/Transition {:visible @modal-open?
-                             :animation "fade up" :duration 500 :unmount-on-hide true}
-              [sa/Modal {:close-icon true :size "large"
-                         :open @modal-open? :on-close #(swap! modal-open? not)}
-               [sa/ModalContent
-                [:img {:style {:width "100%"} :src image-uri}]]]]
-             [sa/Card {:style {:width "100%"}}
-              [:div {:on-click #(swap! modal-open? not)
-                     :style {:display "table-cell" :width "100%" :height "210px"
-                             :padding-top "5px" :text-align "center" :vertical-align "middle"}}
-               [:img {:src image-uri :style {:height "100%" :max-height "200px"
-                                             :max-width "100%"}}]]
-              [sa/CardContent
-               [sa/CardHeader [:a {:href (str "/verify/" id)} name]]
-               [sa/CardMeta
-                [:span.date (str "Uploaded : " (.format (.unix js/moment timestamp)
-                                                        "YYYY/MM/DD HH:mm:ss"))] [:br]
-                [:span (if-not for-sale?
-                         "Not for sale"
-                         (str "For sale : "  price " wei"))]
-                (when meta
-                  [:<>
-                   [:br]
-                   "Tags: "(for [tag (:tags meta)]
-                             ^{:key tag} [sa/Label {:style {:margin-top "3px"}} tag])])]]
-              [sa/CardContent
-               [scoop-editor {:configs {:scoop scoop :web3 web3 :ipfs ipfs}
-                              :handlers {:edit-handler
-                                         #(re-frame/dispatch [::events/edit-scoop
-                                                              web3 id %])}}]]]])))})))
+    (fn []
+      (when image-hash
+        (let [image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)]
+          [:<>
+           [sa/Transition {:visible @modal-open?
+                           :animation "fade up" :duration 500 :unmount-on-hide true}
+            [sa/Modal {:close-icon true :size "large"
+                       :open @modal-open? :on-close #(swap! modal-open? not)}
+             [sa/ModalContent
+              [:img {:style {:width "100%"} :src image-uri}]]]]
+           [sa/Card {:style {:width "100%"}}
+            [:div {:on-click #(swap! modal-open? not)
+                   :style {:display "table-cell" :width "100%" :height "210px"
+                           :padding-top "5px" :text-align "center" :vertical-align "middle"}}
+             [:img {:src image-uri :style {:height "100%" :max-height "200px"
+                                           :max-width "100%"}}]]
+            [sa/CardContent
+             [sa/CardHeader [:a {:href (str "/verify/" id)} name]]
+             [sa/CardMeta
+              [:span.date (str "Uploaded : " (.format (.unix js/moment timestamp)
+                                                      "YYYY/MM/DD HH:mm:ss"))] [:br]
+              [:span (if-not for-sale?
+                       "Not for sale"
+                       (str "For sale : "  price " wei"))]
+              (when meta
+                [:<>
+                 [:br]
+                 "Tags: "(for [tag (:tags meta)]
+                           ^{:key tag} [sa/Label {:style {:margin-top "3px"}} tag])])]]
+            [sa/CardContent
+             [scoop-editor {:configs {:scoop scoop :web3 web3 :ipfs ipfs}
+                            :handlers {:edit-handler
+                                       #(re-frame/dispatch [::events/edit-scoop
+                                                            web3 id %])}}]]]])))))
 
 (defn image-uploader [{:keys [:configs :handlers]}]
   (let [id (random-uuid) {:keys [:upload-handler]} handlers]
@@ -245,7 +239,7 @@
              [sa/Header {:as "h2"} (str "Your credit is " @credit " wei")]
              [sa/Label {:as "label" :class "button" :size "large"
                         :on-click #(do (re-frame/dispatch [::events/fetch-credit web3])
-                                       (re-frame/dispatch [::events/refetch-scoops web3]))}
+                                       (re-frame/dispatch [::events/fetch-scoops web3]))}
               [sa/Icon {:name "undo" :style {:margin 0}}]]
              [scoop-uploader {:configs {:ipfs ipfs}
                               :handlers {:scoop-upload-handler

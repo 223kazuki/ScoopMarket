@@ -12,10 +12,7 @@
   (let [{:keys [:scoop :web3]} configs
         {:keys [:id :name :timestamp :image-hash :price :author :owner
                 :meta :requestor :approved]} scoop]
-    (when (nil? approved)
-      (re-frame/dispatch [::events/fetch-scoop-approval web3 :scoops-for-sale id]))
-    (if (nil? image-hash)
-      (re-frame/dispatch [::events/fetch-scoop web3 :scoops-for-sale id])
+    (if-not (nil? image-hash)
       (let [image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)
             tags (:tags meta)]
         [sa/Card {:style {:width "100%"}}
@@ -94,7 +91,7 @@
           [:div
            [sa/Header {:as "h1"} "Market"]
            [sa/Label {:as "label" :class "button" :size "large"
-                      :on-click #(re-frame/dispatch [::events/refetch-scoops-for-sale web3])}
+                      :on-click #(re-frame/dispatch [::events/fetch-scoops-for-sale web3])}
             [sa/Icon {:name "undo" :style {:margin 0}}]]
            [sa/Divider]
            [sa/Header {:as "h2"} "Your Scoops"]
