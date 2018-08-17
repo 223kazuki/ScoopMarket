@@ -148,8 +148,8 @@
    (re-frame/reg-event-db
     ::scoop-transfered
     (fn-traced [db [_ web3 result]]
-               (re-frame/dispatch [::refetch-scoops web3])
-               (re-frame/dispatch [::refetch-scoops-for-sale web3])
+               (re-frame/dispatch [::fetch-scoops web3])
+               (re-frame/dispatch [::fetch-scoops-for-sale web3])
                db))
 
    (re-frame/reg-event-db
