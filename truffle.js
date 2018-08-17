@@ -4,18 +4,6 @@ var accessToken = process.env.INFURA_ACCESS_TOKEN;
 
 module.exports = {
   networks: {
-    ropsten: {
-      provider: function() {
-        var provider = new HDWalletProvider(
-          mnemonic,
-          "https://ropsten.infura.io/" + accessToken
-        );
-        console.log(provider.addresses)
-        return provider;
-      },
-      network_id: 3,
-      gas: 4700000
-    },
     rinkeby: {
       provider: function() {
         var provider = new HDWalletProvider(
@@ -26,7 +14,7 @@ module.exports = {
         return provider;
       },
       network_id: '*',
-      gas: 4700000
+      gas: 6000000
     },
     development: {
       host: '127.0.0.1',

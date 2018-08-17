@@ -1,12 +1,33 @@
 # ScoopMarket
 
-A Market place for scoops.  
-"Scoops" means an existence of photo/videos.  
-So it is a kind of Proof of Existence dApp.
-
 ## What does your project do?
 
+A Market place for scoops.
+
+"Scoops" means an existence of photo/videos.
+You can uplaod scoops securely on Blockchain and verify you own it.
+You also be able to trade them on market.
+
+
 ## How to set it up
+
+You need
+
+* truffle
+* ganache-cli
+* node/npm
+
+```
+ganache-cli -i 1533140371286
+```
+
+```
+npm install
+truffle migrate --reset
+npm start
+```
+
+## Development
 
 This is a [re-frame](https://github.com/Day8/re-frame) application.
 
@@ -46,9 +67,22 @@ The above command assumes that you have [phantomjs](https://www.npmjs.com/packag
 
 ### Production Build
 
-
 To compile clojurescript to javascript:
 
 ```
-lein build
+lein do clean, build
+```
+
+### Deploy to heroku
+
+```
+./deploy_heroku.sh
+```
+
+### Deploy to IPFS
+
+You need local ipfs daemon.
+
+```
+./deploy_ipfs.sh
 ```

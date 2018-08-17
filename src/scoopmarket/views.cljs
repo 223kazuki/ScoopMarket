@@ -26,32 +26,40 @@
 (defn main-container [mobile?]
   (let [loading? (re-frame/subscribe [::subs/loading?])
         active-page (re-frame/subscribe [::subs/active-page])
-        web3 (re-frame/subscribe [::subs/web3])]
-    [:<>
-     [sa/Transition {:visible (not (or (false? @loading?)
-                                       (nil? @loading?))) :animation "fade" :duration 500
-                     :unmountOnHide true}
-      [sa/Dimmer {:active true :page true}
-       [sa/Loader (if-let [message (:message @loading?)]
-                    message "Loading...")]]]
-     (cond
-       (nil? @web3)
-       (re-frame/dispatch [::events/connect-uport])
+        web3 (re-frame/subscribe [::subs/web3])
+        uport (re-frame/subscribe [::subs/uport])]
+    (reagent/create-class
+     {:component-will-mount
+      #(when (nil? (:web3-instance @web3))
+         (re-frame/dispatch [::events/connect-uport @uport @web3]))
 
-       (not (:is-rinkeby? @web3))
-       [sa/Modal {:size "large" :open true}
-        [sa/ModalContent
-         [:div "You must use Rinkeby test network!"]]]
+      :reagent-render
+      (fn []
+        [:<>
+         [sa/Transition {:visible (not (or (false? @loading?)
+                                           (nil? @loading?)))
+                         :animation "fade" :duration 500 :unmountOnHide true}
+          [sa/Dimmer {:active true :page true}
+           [sa/Loader (if-let [message (:message @loading?)]
+                        message "Loading...")]]]
+         (cond
+           (nil? (:web3-instance @web3))
+           [:div]
 
-       :else
-       (when (:contract-instance @web3)
-         [sa/Container {:className "mainContainer" :style {:marginTop "7em"}}
-          [transition-group
-           [css-transition {:key (:panel @active-page)
-                            :classNames "pageChange"
-                            :timeout 500
-                            :className "transition"}
-            [(panels @active-page) mobile? (:route-params @active-page)]]]]))]))
+           (not (:is-rinkeby? @web3))
+           [sa/Modal {:size "large" :open true}
+            [sa/ModalContent
+             [:div "You must use Rinkeby test network!"]]]
+
+           :else
+           (when (:contract-instance @web3)
+             [sa/Container {:className "mainContainer" :style {:marginTop "7em"}}
+              [transition-group
+               [css-transition {:key (:panel @active-page)
+                                :classNames "pageChange"
+                                :timeout 500
+                                :className "transition"}
+                [(panels @active-page) mobile? (:route-params @active-page)]]]]))])})))
 
 (defn responsible-container []
   (let [sidebar-opened (re-frame/subscribe [::subs/sidebar-opened])]

@@ -14,7 +14,157 @@
   [(re-frame/reg-event-db
     ::initialize-db
     (fn-traced [_ [_ initial-db]]
+               (re-frame/dispatch [::watch-events (:web3 initial-db)])
                initial-db))
+
+   (re-frame/reg-event-db
+    ::watch-events
+    (fn-traced [db [_ web3]]
+               (when (:contract-instance web3)
+                 (re-frame/dispatch [::watch-minted web3])
+                 (re-frame/dispatch [::watch-token-edited web3])
+                 (re-frame/dispatch [::watch-requested web3])
+                 (re-frame/dispatch [::watch-canceled web3])
+                 (re-frame/dispatch [::watch-denied web3])
+                 (re-frame/dispatch [::watch-purchased web3])
+                 (re-frame/dispatch [::watch-mint-cost-set web3])
+                 (re-frame/dispatch [::watch-payments-withdrawed web3]))
+               db))
+
+   (re-frame/reg-event-fx
+    ::watch-minted
+    (fn [{:keys [:db]} [_ web3]]
+      {:web3/watch-events {:events [{:id :minted-watcher
+                                     :event :Minted
+                                     :instance (get-in db [:web3 :contract-instance])
+                                     :block-filter-opts {:from-block "latest"
+                                                         :to-block "latest"}
+                                     :on-success [::minted web3]
+                                     :on-error [::api-failure]}]}}))
+
+   (re-frame/reg-event-fx
+    ::watch-token-edited
+    (fn [{:keys [:db]} [_ web3]]
+      {:web3/watch-events {:events [{:id :token-edited-watcher
+                                     :event :TokenEdited
+                                     :instance (get-in db [:web3 :contract-instance])
+                                     :block-filter-opts {:from-block "latest"
+                                                         :to-block "latest"}
+                                     :on-success [::scoop-updated web3]
+                                     :on-error [::api-failure]}]}}))
+
+   (re-frame/reg-event-fx
+    ::watch-requested
+    (fn [{:keys [:db]} [_ web3]]
+      {:web3/watch-events {:events [{:id :requested-watcher
+                                     :event :Requested
+                                     :instance (get-in db [:web3 :contract-instance])
+                                     :block-filter-opts {:from-block "latest"
+                                                         :to-block "latest"}
+                                     :on-success [::scoop-updated web3]
+                                     :on-error [::api-failure]}]}}))
+
+   (re-frame/reg-event-fx
+    ::watch-approval
+    (fn [{:keys [:db]} [_ web3]]
+      {:web3/watch-events {:events [{:id :approved-watcher
+                                     :event :Approval
+                                     :instance (get-in db [:web3 :contract-instance])
+                                     :block-filter-opts {:from-block "latest"
+                                                         :to-block "latest"}
+                                     :on-success [::scoop-updated web3]
+                                     :on-error [::api-failure]}]}}))
+
+   (re-frame/reg-event-fx
+    ::watch-canceled
+    (fn [{:keys [:db]} [_ web3]]
+      {:web3/watch-events {:events [{:id :canceled-watcher
+                                     :event :Canceled
+                                     :instance (get-in db [:web3 :contract-instance])
+                                     :block-filter-opts {:from-block "latest"
+                                                         :to-block "latest"}
+                                     :on-success [::scoop-updated web3]
+                                     :on-error [::api-failure]}]}}))
+
+   (re-frame/reg-event-fx
+    ::watch-denied
+    (fn [{:keys [:db]} [_ web3]]
+      {:web3/watch-events {:events [{:id :denied-watcher
+                                     :event :Denied
+                                     :instance (get-in db [:web3 :contract-instance])
+                                     :block-filter-opts {:from-block "latest"
+                                                         :to-block "latest"}
+                                     :on-success [::scoop-updated web3]
+                                     :on-error [::api-failure]}]}}))
+
+   (re-frame/reg-event-fx
+    ::watch-purchased
+    (fn [{:keys [:db]} [_ web3]]
+      {:web3/watch-events {:events [{:id :purchased-watcher
+                                     :event :Purchased
+                                     :instance (get-in db [:web3 :contract-instance])
+                                     :block-filter-opts {:from-block "latest"
+                                                         :to-block "latest"}
+                                     :on-success [::scoop-transfered web3]
+                                     :on-error [::api-failure]}]}}))
+
+   (re-frame/reg-event-fx
+    ::watch-mint-cost-set
+    (fn [{:keys [:db]} [_ web3]]
+      {:web3/watch-events {:events [{:id :mint-cost-set-watcher
+                                     :event :MintCostSet
+                                     :instance (get-in db [:web3 :contract-instance])
+                                     :block-filter-opts {:from-block "latest"
+                                                         :to-block "latest"}
+                                     :on-success [::mint-cost-set web3]
+                                     :on-error [::api-failure]}]}}))
+   (re-frame/reg-event-fx
+    ::watch-payments-withdrawed
+    (fn [{:keys [:db]} [_ web3]]
+      {:web3/watch-events {:events [{:id :payments-withdrawed-watcher
+                                     :event :PaymentsWithdrawed
+                                     :instance (get-in db [:web3 :contract-instance])
+                                     :block-filter-opts {:from-block "latest"
+                                                         :to-block "latest"}
+                                     :on-success [::payments-withdrawed web3]
+                                     :on-error [::api-failure]}]}}))
+
+   (re-frame/reg-event-db
+    ::minted
+    (fn-traced [db [_ web3 result]]
+               (re-frame/dispatch [::fetch-scoops web3])
+               (re-frame/dispatch [::fetch-scoops-for-sale web3])
+               db))
+
+   (re-frame/reg-event-db
+    ::scoop-updated
+    (fn-traced [db [_ web3 result]]
+               (let [token-id (js-invoke (:_token-id result) "toNumber")]
+                 (re-frame/dispatch [::fetch-scoop web3 :scoops token-id])
+                 (re-frame/dispatch [::fetch-scoop web3 :scoops-for-sale token-id])
+                 (re-frame/dispatch [::fetch-scoop-approval web3 :scoops-for-sale token-id])
+                 db)))
+
+   (re-frame/reg-event-db
+    ::scoop-transfered
+    (fn-traced [db [_ web3 result]]
+               (re-frame/dispatch [::refetch-scoops web3])
+               (re-frame/dispatch [::refetch-scoops-for-sale web3])
+               db))
+
+   (re-frame/reg-event-db
+    ::mint-cost-set
+    (fn-traced [db [_ web3 result]]
+               (re-frame/dispatch [::fetch-mint-cost web3])
+               db))
+
+
+
+   (re-frame/reg-event-db
+    ::payments-withdrawed
+    (fn-traced [db [_ web3 result]]
+               (re-frame/dispatch [::fetch-credit web3])
+               db))
 
    (re-frame/reg-event-db
     ::toggle-sidebar
@@ -31,7 +181,7 @@
     (fn-traced [db [_ uport web3]]
                (uport/request-credentials
                 uport #(re-frame/dispatch [::request-credential-success uport web3 %]))
-               db))
+               (dissoc db :loading?)))
 
    (re-frame/reg-event-db
     ::request-credential-success
@@ -49,15 +199,19 @@
                                              (aget "id")
                                              (js/parseInt 16)
                                              (== network-id))
-                                     dev)]
+                                     dev)
+                     web3 (assoc web3
+                                 :web3-instance web3-instance
+                                 :contract-instance contract-instance
+                                 :my-address my-address
+                                 :is-rinkeby? is-rinkeby?)]
                  (re-frame/dispatch [::fetch-credit web3])
+                 (re-frame/dispatch [::watch-events web3])
                  (-> db
-                     (assoc-in [:web3 :web3-instance] web3-instance)
-                     (assoc-in [:web3 :contract-instance] contract-instance)
-                     (assoc-in [:web3 :my-address] my-address)
-                     (assoc-in [:web3 :is-rinkeby?] is-rinkeby?)
+                     (assoc :web3 web3)
                      (assoc :credential credential)
-                     (dissoc :scoops)))))
+                     (dissoc :scoops)
+                     (dissoc :scoops-for-sale)))))
 
    (re-frame/reg-event-db
     ::api-failure
@@ -218,7 +372,6 @@
    (re-frame/reg-event-db
     ::mint
     (fn-traced [db [_ web3 mint-cost scoop]]
-               (println mint-cost)
                (let [{:keys [:image-hash :name :for-sale? :price]} scoop
                      price (if-not (empty? price)
                              (js/parseInt price) 0)]

@@ -40,42 +40,38 @@
   (let [{:keys [:scoop :web3]} configs
         {:keys [:approve-handler :deny-handler]} handlers
         {:keys [:requestor :approved]} scoop]
-    (fn []
-      (let [requested? (not= 0 (to-decimal requestor))
-            someone-approved? (not (== 0 (to-decimal approved)))]
-        [scoop-info {:configs configs}
-         (when (and requested? (not someone-approved?))
-           [sa/CardContent {:style {:color "black" :text-align "center"}}
-            ;; TODO: Cancel approval.
-            [:span (str "Approval request from " requestor)] [:br]
-            [sa/Button {:style {:margin-top "10px"}
-                        :on-click approve-handler} "Approve"]
-            [sa/Button {:style {:margin-top "10px"}
-                        :on-click deny-handler} "Deny"]])]))))
+    (let [requested? (not= 0 (to-decimal requestor))
+          someone-approved? (not (== 0 (to-decimal approved)))]
+      [scoop-info {:configs configs}
+       (when (and requested? (not someone-approved?))
+         [sa/CardContent {:style {:color "black" :text-align "center"}}
+          [:span (str "Approval request from " requestor)] [:br]
+          [sa/Button {:style {:margin-top "10px"}
+                      :on-click approve-handler} "Approve"]
+          [sa/Button {:style {:margin-top "10px"}
+                      :on-click deny-handler} "Deny"]])])))
 
 (defn others-scoop-card [{:keys [:configs :handlers]}]
   (let [{:keys [:scoop :web3]} configs
         {:keys [:request-handler :purchase-handler :cancel-handler]} handlers
         {:keys [:requestor :approved]} scoop]
-    (fn []
-      (let [requestor? (= (:my-address web3) requestor)
-            requested? (not= 0 (to-decimal requestor))
-            approved? (= (:my-address web3) approved)]
-        (println requestor)
-        [scoop-info {:configs configs}
-         [sa/CardContent {:style {:color "black" :text-align "center"}}
-          (if requested?
-            (if requestor?
-              (if approved?
-                [:<>
-                 [sa/Button {:on-click cancel-handler} "Cancel"]
-                 [sa/Button {:on-click purchase-handler} "Purchase"]]
-                [:<>
-                 [:span "Requesting..."] [:br]
-                 [sa/Button {:style {:margin-top "10px"}
-                             :on-click cancel-handler} "Cancel"]])
-              [:span "Under deal."])
-            [sa/Button {:on-click request-handler} "Request purchase"])]]))))
+    (let [requestor? (= (:my-address web3) requestor)
+          requested? (not= 0 (to-decimal requestor))
+          approved? (= (:my-address web3) approved)]
+      [scoop-info {:configs configs}
+       [sa/CardContent {:style {:color "black" :text-align "center"}}
+        (if requested?
+          (if requestor?
+            (if approved?
+              [:<>
+               [sa/Button {:on-click cancel-handler} "Cancel"]
+               [sa/Button {:on-click purchase-handler} "Purchase"]]
+              [:<>
+               [:span "Requesting..."] [:br]
+               [sa/Button {:style {:margin-top "10px"}
+                           :on-click cancel-handler} "Cancel"]])
+            [:span "Under deal."])
+          [sa/Button {:on-click request-handler} "Request purchase"])]])))
 
 (defn market-panel [mobile? _]
   (let [scoops-for-sale (re-frame/subscribe [::subs/scoops-for-sale])

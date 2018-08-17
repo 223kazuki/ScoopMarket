@@ -5,6 +5,7 @@ app.set('port', process.env.PORT || 3000);
 
 app.use(express.logger('dev'));
 app.use(express.compress());
+app.use(express.static(__dirname + '/build'));
 app.use(express.static(__dirname + '/resources/public'));
 app.get('/**', function (req, res) {
   res.sendfile(__dirname + '/resources/public/index.html');
