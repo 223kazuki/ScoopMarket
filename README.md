@@ -10,7 +10,7 @@ A Market place for scoops.
 You can uplaod scoops securely on Blockchain and verify you own it.  
 You also be able to trade them on market.
 
-URL: https://ipfs.infura.io/ipfs/QmbshALcx92gsaeuLSkqdhXzw7uiLYunxurfFG5zBCd31L
+URL: https://ipfs.infura.io/ipfs/QmQEwZsE6qeLjHeTtrcZKiaWiRkHdh5ALssuh6TF3kvNFP
 
 The contract is deployed on Rinkeby.
 So You need to connect test net by MetaMask, uPort or web3 enabled mobile browser such as Toshi or Cipher.
