@@ -8,24 +8,29 @@ A Market place for scoops.
 You can uplaod scoops securely on Blockchain and verify you own it.
 You also be able to trade them on market.
 
-
 ## How to set it up
 
-You need
+0. You need to install following commands.
 
 * truffle
 * ganache-cli
 * node/npm
 
-```
+1. Open terminal and run ganache-cli.
+
+```sh
 ganache-cli -i 1533140371286
 ```
 
-```
+2. Open other terminal window and run following commands.
+
+```sh
 npm install
 truffle migrate --reset
 npm start
 ```
+
+3. Open http://localhost:3000/ in browser.
 
 ## Development
 

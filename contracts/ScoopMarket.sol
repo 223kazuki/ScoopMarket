@@ -13,6 +13,7 @@ import "openzeppelin-solidity/contracts/payment/PullPayment.sol";
  */
 contract ScoopMarket is ERC721Token, Pausable, PullPayment {
   // Libraries =============================================================================
+  // @dev This library is not from EthPM but usage is similer to EthPM.
   using SafeMath for uint;
 
   // Events ================================================================================
