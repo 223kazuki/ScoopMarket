@@ -4,8 +4,10 @@
 
 A Market place for scoops.
 
-"Scoops" means an existence of photo/videos.
-You can uplaod scoops securely on Blockchain and verify you own it.
+![Screenshot](screenshot.png)
+
+"Scoops" means an existence of photo/videos.  
+You can uplaod scoops securely on Blockchain and verify you own it.  
 You also be able to trade them on market.
 
 ## How to set it up
