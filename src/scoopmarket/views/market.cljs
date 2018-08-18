@@ -26,7 +26,7 @@
            [:span.date (str "Uploaded : " (.format (.unix js/moment timestamp)
                                                    "YYYY/MM/DD HH:mm:ss"))] [:br]
            [:span (str price " wei")]
-           (when meta
+           (when-not (empty? (:tags meta))
              [:<>
               [:br]
               "Tags: " (for [tag tags]

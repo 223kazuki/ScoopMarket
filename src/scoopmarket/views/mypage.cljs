@@ -131,7 +131,7 @@
               [:span (if-not for-sale?
                        "Not for sale"
                        (str "For sale : "  price " wei"))]
-              (when meta
+              (when-not (empty? (:tags meta))
                 [:<>
                  [:br]
                  "Tags: "(for [tag (:tags meta)]
@@ -148,7 +148,7 @@
      [sa/Label {:htmlFor id :as "label" :class "button" :size "large"}
       [sa/Icon {:name "photo"}] "New Scoop"]
      [:input {:id id :type "file" :style {:display "none"}
-              :accept "image/*" :capture "camera"
+              :accept "image/*,video/mp4,video/x-m4v,video/*" :capture "camera"
               :on-change (fn []
                            (let [el (.getElementById js/document id)
                                  file (aget (.-files el) 0)
