@@ -10,7 +10,12 @@ A Market place for scoops.
 You can uplaod scoops securely on Blockchain and verify you own it.  
 You also be able to trade them on market.
 
-## How to set it up
+URL: https://ipfs.infura.io/ipfs/QmbshALcx92gsaeuLSkqdhXzw7uiLYunxurfFG5zBCd31L
+
+The contract is deployed on Rinkeby.
+So You need to connect test net by MetaMask, uPort or web3 enabled mobile browser such as Toshi or Cipher.
+
+## How to set it up on local environment
 
 0. You need to install following commands.
 
@@ -89,6 +94,12 @@ lein do clean, build
 ### Deploy to IPFS
 
 You need local ipfs daemon.
+
+```
+ipfs daemon
+```
+
+Then deploy.
 
 ```
 ./deploy_ipfs.sh

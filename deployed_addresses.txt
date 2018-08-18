@@ -1,0 +1,2 @@
+I deployed ScoopMarket contract on rinkeby.
+The address is 0x2939883a8fdc0c59da8f298758c0986a5489f576
