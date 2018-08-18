@@ -10,7 +10,8 @@
 (defn verify-panel [_ route-params]
   (let [{:keys [:id]} route-params
         web3 @(re-frame/subscribe [::subs/web3])
-        scoops (re-frame/subscribe [::subs/scoops])]
+        scoops (re-frame/subscribe [::subs/scoops])
+        type (reagent/atom nil)]
     (reagent/create-class
      {:component-did-mount
       #(let [scoop (get-in @scoops [(keyword (str id))])]
@@ -24,9 +25,20 @@
                       :for-sale? :author :owner]} scoop
               image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)]
           (when image-hash
+            (when-not @type
+              (ajax.core/GET image-uri
+                             {:handler #(let [content-type (get-in % [:headers "content-type"])]
+                                          (if (clojure.string/starts-with? content-type "image/")
+                                            (reset! type :img)
+                                            (reset! type :video)))
+                              :response-format (ajax.ring/ring-response-format)}))
             [:div
              [sa/Segment {:textAlign "center"}
-              [:img {:style {:width "100%" :max-width "500px"} :src image-uri}]
+              (when-let [type @type]
+                (case type
+                  :img [:img {:style {:width "100%" :max-width "500px"} :src image-uri}]
+                  :video [:video {:src image-uri :style {:width "100%"}}]
+                  [:span "This file can't display"]))
               [sa/Header {:as "h1"} name]
               [sa/CardMeta
                [:span (str "Uploaded : " (.format (.unix js/moment timestamp)
