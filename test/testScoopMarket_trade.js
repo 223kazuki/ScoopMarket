@@ -12,6 +12,11 @@ const checkReverted = async (promise) => {
     assert.fail(0, 1, 'Expected, but not reverted.');
 }
 
+/**
+ * These tests covers the behaviour of market functions.
+ * I checked who can execute these functions and when it can be executed.
+ * If there is a bug of these behaviours, it cause unexpected transfer of tokens.
+ */
 contract('ScoopMarket', ([_1, _2, owner, seller, buyer, other]) => {
     let scoopMarket;
     const testHash = "QmSoPpGPFr3gz9rfwfwJuLahjTTmhdFJtKNvHYS58s8pqr";

@@ -12,6 +12,12 @@ const checkReverted = async (promise) => {
     assert.fail(0, 1, 'Expected throw not received');
 }
 
+/**
+ * These tests covers the behaviour of mint and editToken functions.
+ * Especially I checked the corectness of validations for their input parameters, 
+ * because that can causes a lot of common attacks like Integer Arithmetic Overflow
+ * or Poison Data.
+ */
 contract('ScoopMarket', ([owner, user1, user2]) => {
     let scoopMarket;
     const testHash = "QmSoPpGPFr3gz9rfwfwJuLahjTTmhdFJtKNvHYS58s8pqr";

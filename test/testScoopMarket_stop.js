@@ -12,6 +12,11 @@ const checkReverted = async (promise) => {
     assert.fail(0, 1, 'Expected throw not received');
 }
 
+/**
+ * These tests covers the behaviour of emergency stop.
+ * I tested it because we can't stop atacker to execute critical functions
+ * if there is a bug in this functionality.
+ */
 contract('ScoopMarket', ([_1, _2, _3, _4, _5, _6, owner, seller, buyer]) => {
     let scoopMarket;
     const testHash = "QmSoPpGPFr3gz9rfwfwJuLahjTTmhdFJtKNvHYS58s8pqr";
