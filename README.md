@@ -26,7 +26,7 @@ ganache-cli -i 1533140371286
 
 ```sh
 npm install
-truffle migrate --reset
+truffle migrate
 npm start
 ```
 

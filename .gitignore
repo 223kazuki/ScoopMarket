@@ -23,5 +23,6 @@ pom.xml.asc
 /*.log
 /*-init.clj
 /resources/public/js/compiled
+/resources/public/contracts
 out
 .rebel_readline_history
