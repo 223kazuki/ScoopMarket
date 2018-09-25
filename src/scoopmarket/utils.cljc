@@ -1,0 +1,11 @@
+(ns scoopmarket.utils
+  (:require [integrant.core :as ig]
+            #?(:clj [clojure.data.json :as json])
+            #?(:clj [clojure.java.io :as io])))
+
+(defmacro read-config [resource]
+  #?(:clj (ig/read-string
+           {:readers {'json #(-> %
+                                 slurp
+                                 (json/read-str :key-fn keyword))}}
+           (slurp (io/resource resource)))))

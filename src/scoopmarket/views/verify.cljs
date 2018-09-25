@@ -1,22 +1,24 @@
 (ns scoopmarket.views.verify
   (:require [re-frame.core :as re-frame]
             [reagent.core :as reagent]
-            [scoopmarket.module.subs :as subs]
-            [scoopmarket.module.events :as events]
+            [scoopmarket.module.web3 :as web3]
+            [scoopmarket.module.uport :as uport]
+            [scoopmarket.module.ipfs :as ipfs]
+            [scoopmarket.module.scoopmarket :as scoopmarket]
             [soda-ash.core :as sa]
             [cljsjs.semantic-ui-react]
             [cljsjs.moment]))
 
 (defn verify-panel [_ route-params]
   (let [{:keys [:id]} route-params
-        web3 @(re-frame/subscribe [::subs/web3])
-        scoops (re-frame/subscribe [::subs/scoops])
+        web3 @(re-frame/subscribe [::web3/web3])
+        scoops (re-frame/subscribe [::scoopmarket/scoops])
         type (reagent/atom nil)]
     (reagent/create-class
      {:component-did-mount
       #(let [scoop (get-in @scoops [(keyword (str id))])]
          (when-not (:image-hash scoop)
-           (re-frame/dispatch [::events/fetch-scoop web3 :scoops id])))
+           (re-frame/dispatch [::scoopmarket/fetch-scoop web3 :scoops id])))
 
       :reagent-render
       (fn []

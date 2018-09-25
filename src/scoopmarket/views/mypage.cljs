@@ -1,9 +1,10 @@
 (ns scoopmarket.views.mypage
   (:require [re-frame.core :as re-frame]
             [reagent.core :as reagent]
-            [scoopmarket.module.subs :as subs]
-            [scoopmarket.module.events :as events]
+            [scoopmarket.module.web3 :as web3]
+            [scoopmarket.module.uport :as uport]
             [scoopmarket.module.ipfs :as ipfs]
+            [scoopmarket.module.scoopmarket :as scoopmarket]
             [soda-ash.core :as sa]
             [cljsjs.semantic-ui-react]
             [cljsjs.buffer]
@@ -156,7 +157,7 @@
             [sa/CardContent
              [scoop-editor {:configs {:scoop scoop :web3 web3 :ipfs ipfs}
                             :handlers {:edit-handler
-                                       #(re-frame/dispatch [::events/edit-scoop
+                                       #(re-frame/dispatch [::scoopmarket/edit-scoop
                                                             web3 id %])}}]]]])))))
 
 (defn image-uploader [{:keys [:configs :handlers]}]
@@ -241,18 +242,19 @@
                        :on-click #(scoop-upload-handler @form)} "Mint"]]]]]])))
 
 (defn mypage-panel [mobile? _]
-  (let [scoops (re-frame/subscribe [::subs/scoops])
-        credential (re-frame/subscribe [::subs/credential])
-        web3 (re-frame/subscribe [::subs/web3])
-        ipfs (re-frame/subscribe [::subs/ipfs])
-        uport (re-frame/subscribe [::subs/uport])
-        credit (re-frame/subscribe [::subs/credit])
-        mint-cost (re-frame/subscribe [::subs/mint-cost])]
+  (let [scoops (re-frame/subscribe [::scoopmarket/scoops])
+        credential (re-frame/subscribe [::uport/credential])
+        web3 (re-frame/subscribe [::web3/web3])
+        ipfs (re-frame/subscribe [::ipfs/ipfs])
+        uport (re-frame/subscribe [::uport/uport])
+        credit (re-frame/subscribe [::scoopmarket/credit])
+        mint-cost (re-frame/subscribe [::scoopmarket/mint-cost])]
     (reagent/create-class
-     {:component-will-mount
-      #(do (re-frame/dispatch [::events/fetch-credit @web3])
-           (re-frame/dispatch [::events/fetch-mint-cost @web3])
-           (re-frame/dispatch [::events/fetch-scoops @web3]))
+     {
+      ;; :component-will-mount
+      ;; #(do (re-frame/dispatch [::events/fetch-credit @web3])
+      ;;      (re-frame/dispatch [::events/fetch-mint-cost @web3])
+      ;;      (re-frame/dispatch [::events/fetch-scoops @web3]))
 
       :reagent-render
       (fn []
@@ -268,20 +270,21 @@
                 [sa/Divider {:hidden true}]])
              [sa/Header {:as "h2"} (str "Your credit is " @credit " wei")]
              [sa/Label {:as "label" :class "button" :size "large"
-                        :on-click #(do (re-frame/dispatch [::events/fetch-credit web3])
-                                       (re-frame/dispatch [::events/fetch-scoops web3]))}
+                        :on-click #(do (re-frame/dispatch [::scoopmarket/fetch-credit web3])
+                                       (re-frame/dispatch [::scoopmarket/fetch-scoops web3]))}
               [sa/Icon {:name "undo" :style {:margin 0}}]]
              [scoop-uploader {:configs {:ipfs ipfs}
                               :handlers {:scoop-upload-handler
                                          (fn [scoop]
-                                           (re-frame/dispatch [::events/mint web3 @mint-cost scoop]))}}]
+                                           (re-frame/dispatch
+                                            [::scoopmarket/mint web3 @mint-cost scoop]))}}]
              (when-not @credential
                [sa/Label {:as "label" :class "button" :size "large"
-                          :on-click #(re-frame/dispatch [::events/connect-uport uport web3])}
+                          :on-click #(re-frame/dispatch [::uport/connect-uport uport web3])}
                 [sa/Icon {:name "id card"}] "Connect uPort"])
              (when-not (zero? @credit)
                [sa/Label {:as "label" :class "button" :size "large"
-                          :on-click #(re-frame/dispatch [::events/withdraw web3])}
+                          :on-click #(re-frame/dispatch [::scoopmarket/withdraw web3])}
                 [sa/Icon {:name "money"}] "Withdraw credit"])
              [sa/Divider]
              (let [scoops (sort-by key @scoops)]

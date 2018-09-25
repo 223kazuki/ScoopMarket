@@ -1,11 +1,11 @@
 (ns scoopmarket.views
   (:require [re-frame.core :as re-frame]
             [reagent.core :as reagent]
-            [scoopmarket.module.subs :as subs]
-            [scoopmarket.module.events :as events]
             [scoopmarket.views.market :as market]
             [scoopmarket.views.verify :as verify]
             [scoopmarket.views.mypage :as mypage]
+            [scoopmarket.module.router :as router]
+            [scoopmarket.module.web3 :as web3]
             [soda-ash.core :as sa]
             [cljsjs.semantic-ui-react]
             [cljsjs.react-transition-group]
@@ -24,45 +24,38 @@
   (reagent/adapt-react-class js/ReactTransitionGroup.CSSTransition))
 
 (defn main-container [mobile?]
-  (let [loading? (re-frame/subscribe [::subs/loading?])
-        active-page (re-frame/subscribe [::subs/active-page])
-        web3 (re-frame/subscribe [::subs/web3])
-        uport (re-frame/subscribe [::subs/uport])]
-    (reagent/create-class
-     {:component-will-mount
-      #(when (nil? (:web3-instance @web3))
-         (re-frame/dispatch [::events/connect-uport @uport @web3]))
+  (let [loading? (re-frame/subscribe [:scoopmarket.module.app/loading?])
+        active-page (re-frame/subscribe [::router/active-page])
+        web3-instance (re-frame/subscribe [::web3/web3-instance])]
+    (fn []
+      [:<>
+       [sa/Transition {:visible (not (or (false? @loading?)
+                                         (nil? @loading?)))
+                       :animation "fade" :duration 500 :unmountOnHide true}
+        [sa/Dimmer {:active true :page true}
+         [sa/Loader (if-let [message (:message @loading?)]
+                      message "Loading...")]]]
+       (cond
+         (nil? (:web3-instance @web3))
+         [:div]
 
-      :reagent-render
-      (fn []
-        [:<>
-         [sa/Transition {:visible (not (or (false? @loading?)
-                                           (nil? @loading?)))
-                         :animation "fade" :duration 500 :unmountOnHide true}
-          [sa/Dimmer {:active true :page true}
-           [sa/Loader (if-let [message (:message @loading?)]
-                        message "Loading...")]]]
-         (cond
-           (nil? (:web3-instance @web3))
-           [:div]
+         (not (:is-rinkeby? @web3))
+         [sa/Modal {:size "large" :open true}
+          [sa/ModalContent
+           [:div "You must use Rinkeby test network!"]]]
 
-           (not (:is-rinkeby? @web3))
-           [sa/Modal {:size "large" :open true}
-            [sa/ModalContent
-             [:div "You must use Rinkeby test network!"]]]
-
-           :else
-           (when (:contract-instance @web3)
-             [sa/Container {:className "mainContainer" :style {:marginTop "7em"}}
-              [transition-group
-               [css-transition {:key (:panel @active-page)
-                                :classNames "pageChange"
-                                :timeout 500
-                                :className "transition"}
-                [(panels @active-page) mobile? (:route-params @active-page)]]]]))])})))
+         :else
+         (when (:contract-instance @web3)
+           [sa/Container {:className "mainContainer" :style {:marginTop "7em"}}
+            [transition-group
+             [css-transition {:key (:panel @active-page)
+                              :classNames "pageChange"
+                              :timeout 500
+                              :className "transition"}
+              [(panels @active-page) mobile? (:route-params @active-page)]]]]))])))
 
 (defn responsible-container []
-  (let [sidebar-opened (re-frame/subscribe [::subs/sidebar-opened])]
+  (let [sidebar-opened (re-frame/subscribe [:scoopmarket.module.app/sidebar-opened])]
     [:div
      [sa/Responsive {:min-width 768}
       [sa/Menu {:fixed "top" :inverted true :style {:background-color "black"} :size "huge"}
@@ -78,19 +71,21 @@
                     :inverted true :vertical true :visible @sidebar-opened
                     :style {:background-color "black"}}
         [sa/MenuItem {:as "a" :href "/"
-                      :on-click #(re-frame/dispatch [::events/toggle-sidebar])} "My Page"]
+                      :on-click #(re-frame/dispatch [:scopmarket.module.app/toggle-sidebar])}
+         "My Page"]
         [sa/MenuItem {:as "a" :href "/market"
-                      :on-click #(re-frame/dispatch [::events/toggle-sidebar])} "Market"]]
+                      :on-click #(re-frame/dispatch [:scopmarket.module.app/toggle-sidebar])}
+         "Market"]]
        [sa/SidebarPusher {:dimmed @sidebar-opened :style {:min-height "100vh"
                                                           :overflow-y "scroll"}
                           :on-click #(if @sidebar-opened
-                                       (re-frame/dispatch [::events/toggle-sidebar]))}
+                                       (re-frame/dispatch [:scopmarket.module.app/toggle-sidebar]))}
         [sa/Segment {:inverted true :text-align "center" :vertical true
                      :style {:height 70 :background-color "black"}}
          [sa/Container
           [sa/Menu {:inverted true :pointing true :secondary true :size "large"
                     :style {:border "none"}}
-           [sa/MenuItem {:on-click #(re-frame/dispatch [::events/toggle-sidebar])}
+           [sa/MenuItem {:on-click #(re-frame/dispatch [:scopmarket.module.app/toggle-sidebar])}
             [sa/Icon {:name "sidebar"}]]]
           [:br]
           [main-container true]]]]]]]))

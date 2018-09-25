@@ -1,8 +1,10 @@
 (ns scoopmarket.views.market
   (:require [re-frame.core :as re-frame]
             [reagent.core :as reagent]
-            [scoopmarket.module.subs :as subs]
-            [scoopmarket.module.events :as events]
+            [scoopmarket.module.web3 :as web3]
+            [scoopmarket.module.uport :as uport]
+            [scoopmarket.module.ipfs :as ipfs]
+            [scoopmarket.module.scoopmarket :as scoopmarket]
             [soda-ash.core :as sa]
             [cljsjs.semantic-ui-react]
             [cljsjs.moment]
@@ -85,14 +87,14 @@
           [sa/Button {:on-click request-handler} "Request purchase"])]])))
 
 (defn market-panel [mobile? _]
-  (let [scoops-for-sale (re-frame/subscribe [::subs/scoops-for-sale])
-        credential (re-frame/subscribe [::subs/credential])
-        web3 (re-frame/subscribe [::subs/web3])
-        ipfs (re-frame/subscribe [::subs/ipfs])
-        uport (re-frame/subscribe [::subs/uport])]
+  (let [scoops-for-sale (re-frame/subscribe [::scoopmarket/scoops-for-sale])
+        credential (re-frame/subscribe [::uport/credential])
+        web3 (re-frame/subscribe [::web3/web3])
+        ipfs (re-frame/subscribe [::ipfs/ipfs])
+        uport (re-frame/subscribe [::uport/uport])]
     (reagent/create-class
      {:component-will-mount
-      #(re-frame/dispatch [::events/fetch-scoops-for-sale @web3])
+      #(re-frame/dispatch [::scoopmarket/fetch-scoops-for-sale @web3])
 
       :reagent-render
       (fn []
@@ -101,7 +103,7 @@
           [:div
            [sa/Header {:as "h1"} "Market"]
            [sa/Label {:as "label" :class "button" :size "large"
-                      :on-click #(re-frame/dispatch [::events/fetch-scoops-for-sale web3])}
+                      :on-click #(re-frame/dispatch [::scoopmarket/fetch-scoops-for-sale web3])}
             [sa/Icon {:name "undo" :style {:margin 0}}]]
            [sa/Divider]
            [sa/Header {:as "h2"} "Your Scoops"]
@@ -118,10 +120,10 @@
                    [my-scoop-card
                     {:configs {:scoop scoop :web3 web3}
                      :handlers {:approve-handler
-                                #(re-frame/dispatch [::events/approve web3
+                                #(re-frame/dispatch [::scoopmarket/approve web3
                                                      (name id) (:requestor scoop)])
                                 :deny-handler
-                                #(re-frame/dispatch [::events/deny web3
+                                #(re-frame/dispatch [::scoopmarket/deny web3
                                                      (name id) (:requestor scoop)])}}]])]))
            [sa/Divider]
            [sa/Header {:as "h2"} "Scoops on sale"]
@@ -138,10 +140,10 @@
                    [others-scoop-card
                     {:configs {:scoop scoop :web3 web3}
                      :handlers {:request-handler
-                                #(re-frame/dispatch [::events/request web3 (name id)])
+                                #(re-frame/dispatch [::scoopmarket/request web3 (name id)])
                                 :purchase-handler
-                                #(re-frame/dispatch [::events/purchase
+                                #(re-frame/dispatch [::scoopmarket/purchase
                                                      web3 (name id) (:price scoop)])
                                 :cancel-handler
-                                #(re-frame/dispatch [::events/cancel
+                                #(re-frame/dispatch [::scoopmarket/cancel
                                                      web3 (name id) (:price scoop)])}}]])]))]))})))

@@ -2,7 +2,7 @@
   :description "A market place for scoops."
   :url "http://example.com/FIXME"
   :min-lein-version "2.5.3"
-  :dependencies [[org.clojure/clojure "1.8.0"]
+  :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/clojurescript "1.10.339"]
                  [reagent "0.8.0"]
                  [re-frame "0.10.5"]
@@ -16,7 +16,8 @@
                  [bidi "2.1.3"]
                  [soda-ash "0.78.2" :exclusions [[cljsjs/react]]]
                  [day8.re-frame/http-fx "0.1.6"]
-                 [district0x.re-frame/web3-fx "1.0.5" :exclusions [[cljs-web3]]]]
+                 [district0x.re-frame/web3-fx "1.0.5" :exclusions [[cljs-web3]]]
+                 [org.clojure/data.json "0.2.6"]]
   :plugins [[lein-cljsbuild "1.1.7"]]
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"
                                     "test/js"]
@@ -35,17 +36,18 @@
                                  [day8.re-frame/re-frame-10x "0.3.3"]
                                  [day8.re-frame/tracing "0.5.1"]
                                  [figwheel-sidecar "0.5.16"]
-                                 [cider/piggieback "0.3.5"]]
-                  :resource-paths ["dev/resources" "build"]
+                                 [cider/piggieback "0.3.5"]
+                                 [meta-merge "1.0.0"]]
+                  :resource-paths ["dev/resources"]
                   :plugins      [[lein-figwheel "0.5.16"]
                                  [lein-doo "0.1.8"]
                                  [lein-pdo "0.1.1"]]}}
   :cljsbuild
   {:builds
    [{:id "dev"
-     :source-paths ["src"]
-     :figwheel     {:on-jsload "scoopmarket.core/reset"}
-     :compiler     {:main                 scoopmarket.core
+     :source-paths ["src" "dev/src"]
+     :figwheel     {:on-jsload            cljs.user/reset}
+     :compiler     {:main                 cljs.user
                     :output-to            "resources/public/js/compiled/app.js"
                     :output-dir           "resources/public/js/compiled/out"
                     :asset-path           "js/compiled/out"
@@ -54,14 +56,25 @@
                                            day8.re-frame-10x.preload]
                     :closure-defines      {"re_frame.trace.trace_enabled_QMARK_" true
                                            "day8.re_frame.tracing.trace_enabled_QMARK_" true}
-                    :external-config      {:devtools/config {:features-to-install :all}}}}
+                    :external-config      {:devtools/config {:features-to-install :all}}
+                    :foreign-libs         [{:file
+                                            "resources/lib/uport-connect/uport-connect.min.js"
+                                            :file-min
+                                            "resources/lib/uport-connect/uport-connect.min.js"
+                                            :provides ["uport-connect"]}]}}
     {:id "min"
      :source-paths ["src"]
      :compiler     {:main            scoopmarket.core
                     :output-to       "resources/public/js/compiled/app.js"
                     :optimizations   :advanced
                     :closure-defines {goog.DEBUG false}
-                    :pretty-print    false}}
+                    :pretty-print    false
+                    :foreign-libs    [{:file
+                                       "resources/lib/uport-connect/uport-connect.min.js"
+                                       :file-min
+                                       "resources/lib/uport-connect/uport-connect.min.js"
+                                       :provides ["uport-connect"]}]
+                    :externs         ["resources/lib/uport-connect/externs.js"]}}
     {:id "test"
      :source-paths ["src" "test"]
      :compiler     {:main          scoopmarket.runner

@@ -1,0 +1,26 @@
+{:scoopmarket.module/web3
+ {:network-id 1533140371286
+  :contract-json #json "resources/public/contracts/ScoopMarket.json"}
+
+ :scoopmarket.module/uport
+ {:app-name "ScoopMarket"
+  :client-id "2ongzbaHaEopuxDdxrCvU1XZqWt16oir144"
+  :network "rinkeby"
+  :signing-key "f5dc5848640a565994f9889d9ddda443a2fcf4c3d87aef3a74c54c4bcadc8ebd"
+  :web3 #ig/ref :scoopmarket.module/web3}
+
+ :scoopmarket.module/ipfs
+ {:protocol "https"
+  :host "ipfs.infura.io"
+  :port 5001}
+
+ :scoopmarket.module/router
+ ["/" {""                       :mypage
+       ["verify/" :id] :verify
+       "market"                 :market}]
+
+ :scoopmarket.module/app
+ {:mount-point-id "app"
+  :ipfs #ig/ref :scoopmarket.module/ipfs
+  :uport #ig/ref :scoopmarket.module/uport
+  :router #ig/ref :scoopmarket.module/router}}
