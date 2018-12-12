@@ -339,7 +339,7 @@
                      price (js-invoke price "toNumber")
                      timestamp (js-invoke timestamp "toNumber")]
                  (when-not (empty? meta-hash)
-                   (js-invoke (:ipfs db) "cat" meta-hash
+                   (js-invoke (:ipfs (:ipfs db)) "cat" meta-hash
                               (fn [_ file]
                                 (when file
                                   (let [meta (js->clj (.parse js/JSON
