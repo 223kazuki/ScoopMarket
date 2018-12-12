@@ -3,27 +3,28 @@
             [reagent.core :as reagent]
             [scoopmarket.module.subs :as subs]
             [scoopmarket.module.events :as events]
+            [scoopmarket.module.ipfs :as ipfs]
             [soda-ash.core :as sa]
             [cljsjs.semantic-ui-react]
             [cljsjs.moment]
             [cljs-web3.core :refer [to-decimal]]))
 
 (defn scoop-info [{:keys [:configs :handlers]} contents]
-  (let [{:keys [:scoop :web3]} configs
+  (let [{:keys [:scoop :web3 :ipfs]} configs
         {:keys [:id :name :timestamp :image-hash :price :author :owner
                 :meta :requestor :approved]} scoop
         type (reagent/atom nil)]
     (fn []
       (if-not (nil? image-hash)
-        (let [image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)
+        (let [image-uri (ipfs/get-url ipfs image-hash)
               tags (:tags meta)]
           (when-not @type
             (ajax.core/GET image-uri
-                           {:handler #(let [content-type (get-in % [:headers "content-type"])]
-                                        (if (clojure.string/starts-with? content-type "image/")
-                                          (reset! type :img)
-                                          (reset! type :video)))
-                            :response-format (ajax.ring/ring-response-format)}))
+                {:handler #(let [content-type (get-in % [:headers "content-type"])]
+                             (if (clojure.string/starts-with? content-type "image/")
+                               (reset! type :img)
+                               (reset! type :video)))
+                 :response-format (ajax.ring/ring-response-format)}))
           [sa/Card {:style {:width "100%"}}
            [:div {:style {:display "table-cell" :width "100%" :height "210px"
                           :padding-top "5px" :text-align "center" :vertical-align "middle"}}
@@ -116,7 +117,7 @@
                   ^{:key scoop}
                   [sa/GridColumn
                    [my-scoop-card
-                    {:configs {:scoop scoop :web3 web3}
+                    {:configs {:scoop scoop :web3 web3 :ipfs ipfs}
                      :handlers {:approve-handler
                                 #(re-frame/dispatch [::events/approve web3
                                                      (name id) (:requestor scoop)])
@@ -136,7 +137,7 @@
                   ^{:key scoop}
                   [sa/GridColumn
                    [others-scoop-card
-                    {:configs {:scoop scoop :web3 web3}
+                    {:configs {:scoop scoop :web3 web3 :ipfs ipfs}
                      :handlers {:request-handler
                                 #(re-frame/dispatch [::events/request web3 (name id)])
                                 :purchase-handler

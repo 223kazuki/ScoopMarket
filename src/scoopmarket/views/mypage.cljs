@@ -110,14 +110,14 @@
         modal-open? (reagent/atom false)]
     (fn []
       (when image-hash
-        (let [image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)]
+        (let [image-uri (ipfs/get-url ipfs image-hash)]
           (when-not @type
             (ajax.core/GET image-uri
-                           {:handler #(let [content-type (get-in % [:headers "content-type"])]
-                                        (if (clojure.string/starts-with? content-type "image/")
-                                          (reset! type :img)
-                                          (reset! type :video)))
-                            :response-format (ajax.ring/ring-response-format)}))
+                {:handler #(let [content-type (get-in % [:headers "content-type"])]
+                             (if (clojure.string/starts-with? content-type "image/")
+                               (reset! type :img)
+                               (reset! type :video)))
+                 :response-format (ajax.ring/ring-response-format)}))
           [:<>
            [sa/Transition {:visible @modal-open?
                            :animation "fade up" :duration 500 :unmount-on-hide true}

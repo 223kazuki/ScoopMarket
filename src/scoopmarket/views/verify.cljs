@@ -3,13 +3,15 @@
             [reagent.core :as reagent]
             [scoopmarket.module.subs :as subs]
             [scoopmarket.module.events :as events]
+            [scoopmarket.module.ipfs :as ipfs]
             [soda-ash.core :as sa]
             [cljsjs.semantic-ui-react]
             [cljsjs.moment]))
 
 (defn verify-panel [_ route-params]
   (let [{:keys [:id]} route-params
-        web3 @(re-frame/subscribe [::subs/web3])
+        web3 (re-frame/subscribe [::subs/web3])
+        ipfs (re-frame/subscribe [::subs/ipfs])
         scoops (re-frame/subscribe [::subs/scoops])
         type (reagent/atom nil)]
     (reagent/create-class
@@ -20,18 +22,20 @@
 
       :reagent-render
       (fn []
-        (let [scoop (get-in @scoops [(keyword (str id))])
+        (let [web3 @web3
+              ipfs @ipfs
+              scoop (get-in @scoops [(keyword (str id))])
               {:keys [:id :name :timestamp :image-hash :price
                       :for-sale? :author :owner]} scoop
-              image-uri (str "https://ipfs.infura.io/ipfs/" image-hash)]
+              image-uri (ipfs/get-url ipfs image-hash)]
           (when image-hash
             (when-not @type
               (ajax.core/GET image-uri
-                             {:handler #(let [content-type (get-in % [:headers "content-type"])]
-                                          (if (clojure.string/starts-with? content-type "image/")
-                                            (reset! type :img)
-                                            (reset! type :video)))
-                              :response-format (ajax.ring/ring-response-format)}))
+                  {:handler #(let [content-type (get-in % [:headers "content-type"])]
+                               (if (clojure.string/starts-with? content-type "image/")
+                                 (reset! type :img)
+                                 (reset! type :video)))
+                   :response-format (ajax.ring/ring-response-format)}))
             [:div
              [sa/Segment {:textAlign "center"}
               (when-let [type @type]
