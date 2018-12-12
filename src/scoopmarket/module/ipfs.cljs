@@ -5,12 +5,16 @@
 
 (def Buffer js/buffer.Buffer)
 
-(defn upload-data [ipfs buffer uploaded-handler]
+(defn upload-data [{:keys [:ipfs]} buffer uploaded-handler]
   (.then (js-invoke ipfs "add" buffer)
          (fn [response]
            (uploaded-handler (aget (first response) "hash")))))
 
-(defmethod ig/init-key :scoopmarket.module.ipfs [_ opts]
-  (js/IpfsApi (clj->js opts)))
+(defn get-url [{:keys [:endpoint]} hash]
+  (str endpoint hash))
 
-(defmethod ig/halt-key! :scoopmarket.module.ipfs [_ _])
+(defmethod ig/init-key :scoopmarket.module/ipfs [_ opts]
+  {:ipfs (js/IpfsApi (clj->js opts))
+   :endpoint (:endpoint opts)})
+
+(defmethod ig/halt-key! :scoopmarket.module/ipfs [_ _])

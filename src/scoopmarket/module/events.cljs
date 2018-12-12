@@ -10,7 +10,7 @@
             [cljs-web3.eth :as web3-eth]
             [clojure.core.async :refer [go <! timeout]]))
 
-(defmethod ig/init-key :scoopmarket.module.events [_ _]
+(defmethod ig/init-key :scoopmarket.module/events [_ _]
   [(re-frame/reg-event-db
     ::initialize-db
     (fn-traced [_ [_ initial-db]]
@@ -555,5 +555,5 @@
                (re-frame/dispatch [::fetch-credit web3])
                (dissoc db :loading?)))])
 
-(defmethod ig/halt-key! :scoopmarket.module.events [_ _]
+(defmethod ig/halt-key! :scoopmarket.module/events [_ _]
   (re-frame/clear-event))

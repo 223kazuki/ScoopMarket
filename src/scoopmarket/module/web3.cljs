@@ -20,7 +20,7 @@
                 (polling-loop))))]
     (wait-for-mined {:block-number nil})))
 
-(defmethod ig/init-key :scoopmarket.module.web3 [_ {:keys [:contract-json :network-id :dev]}]
+(defmethod ig/init-key :scoopmarket.module/web3 [_ {:keys [:contract-json :network-id :dev]}]
   (let [{:keys [:abi :networks] :as contract} contract-json
         network-id-key (keyword (str network-id))
         address (-> networks network-id-key :address)
@@ -42,4 +42,4 @@
                               dev))
       web3)))
 
-(defmethod ig/halt-key! :scoopmarket.module.web3 [_ _])
+(defmethod ig/halt-key! :scoopmarket.module/web3 [_ _])

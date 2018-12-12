@@ -1,5 +1,7 @@
 (ns scoopmarket.macro
-  (:refer-clojure :exclude [slurp]))
+  (:require #?(:clj [clojure.data.json :as json])))
 
-(defmacro slurp [file]
-  #?(:clj (clojure.core/slurp file)))
+(defmacro json [file]
+  #?(:clj (-> file
+              clojure.core/slurp
+              (json/read-str :key-fn keyword))))

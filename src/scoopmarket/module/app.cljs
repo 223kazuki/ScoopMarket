@@ -10,7 +10,7 @@
     (enable-console-print!)
     (println "dev mode")))
 
-(defmethod ig/init-key :scoopmarket.module.app
+(defmethod ig/init-key :scoopmarket.module/app
   [_ {:keys [initial-db dev]}]
   (dev-setup dev)
   (re-frame/dispatch-sync [::events/initialize-db initial-db])

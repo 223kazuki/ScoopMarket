@@ -24,10 +24,10 @@
 (defn go-to-page [{:keys [history routes]} route]
   (pushy/set-token! history (bidi/path-for routes route)))
 
-(defmethod ig/init-key :scoopmarket.module.routes
+(defmethod ig/init-key :scoopmarket.module/routes
   [_ {:keys [routes] :as opts}]
   (app-routes routes))
 
-(defmethod ig/halt-key! :scoopmarket.module.routes
+(defmethod ig/halt-key! :scoopmarket.module/routes
   [_ {:keys [history]}]
   (pushy/stop! history))

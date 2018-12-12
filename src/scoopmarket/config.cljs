@@ -9,50 +9,43 @@
             [scoopmarket.module.uport]
             [scoopmarket.module.ipfs]
             [scoopmarket.module.routes])
-  (:require-macros [scoopmarket.macro :refer [slurp]]))
+  (:require-macros [scoopmarket.macro :refer [json]]))
 
-(defn get-contract-json []
-  (-> (slurp "resources/public/contracts/ScoopMarket.json")
-      (js/JSON.parse)
-      (js->clj :keywordize-keys true)))
+(defn system-conf []
+  {:scoopmarket.module/web3
+   {:network-id 4
+    :contract-json (json "build/contracts/ScoopMarket.json")
+    :dev false}
 
-(def debug? ^boolean goog.DEBUG)
-
-(defn system-conf [localhost? contract-json]
-  {:scoopmarket.module.web3
-   {:network-id (if localhost? 1533140371286 4)
-    :contract-json (or contract-json
-                       (get-contract-json))
-    :dev localhost?}
-
-   :scoopmarket.module.uport
+   :scoopmarket.module/uport
    {:app-name "ScoopMarket"
     :client-id "2ongzbaHaEopuxDdxrCvU1XZqWt16oir144"
     :network "rinkeby"
     :signing-key "f5dc5848640a565994f9889d9ddda443a2fcf4c3d87aef3a74c54c4bcadc8ebd"}
 
-   :scoopmarket.module.ipfs
+   :scoopmarket.module/ipfs
    {:protocol "https"
     :host "ipfs.infura.io"
-    :port 5001}
+    :port 5001
+    :endpoint "https://ipfs.infura.io/ipfs/"}
 
-   :scoopmarket.module.events {}
+   :scoopmarket.module/events {}
 
-   :scoopmarket.module.subs {}
+   :scoopmarket.module/subs {}
 
-   :scoopmarket.module.routes
+   :scoopmarket.module/routes
    {:routes ["/" {""                       :mypage
                   ["verify/" [#"\d+" :id]] :verify
                   "market"                 :market}]
-    :subs (ig/ref :scoopmarket.module.subs)
-    :events (ig/ref :scoopmarket.module.events)}
+    :subs (ig/ref :scoopmarket.module/subs)
+    :events (ig/ref :scoopmarket.module/events)}
 
-   :scoopmarket.module.app
+   :scoopmarket.module/app
    {:initial-db {:active-page {:panel :none}
                  :sidebar-opened false
                  :loading? true
-                 :ipfs (ig/ref :scoopmarket.module.ipfs)
-                 :web3 (ig/ref :scoopmarket.module.web3)
-                 :uport (ig/ref :scoopmarket.module.uport)}
-    :dev debug?
-    :routes (ig/ref :scoopmarket.module.routes)}})
+                 :ipfs (ig/ref :scoopmarket.module/ipfs)
+                 :web3 (ig/ref :scoopmarket.module/web3)
+                 :uport (ig/ref :scoopmarket.module/uport)}
+    :dev false
+    :routes (ig/ref :scoopmarket.module/routes)}})

@@ -2,7 +2,7 @@
   (:require [re-frame.core :as re-frame]
             [integrant.core :as ig]))
 
-(defmethod ig/init-key :scoopmarket.module.subs [_ _]
+(defmethod ig/init-key :scoopmarket.module/subs [_ _]
   [(re-frame/reg-sub
     ::active-page
     (fn [db]
@@ -58,5 +58,5 @@
     (fn [db]
       (:credential db)))])
 
-(defmethod ig/halt-key! :scoopmarket.module.subs [_ _]
+(defmethod ig/halt-key! :scoopmarket.module/subs [_ _]
   (re-frame/clear-sub))

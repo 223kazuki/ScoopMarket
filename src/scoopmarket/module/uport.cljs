@@ -15,7 +15,7 @@
        (js/console.err err)
        (success-handler (js->clj cred :keywordize-keys true))))))
 
-(defmethod ig/init-key :scoopmarket.module.uport [_ {:keys [app-name client-id network signing-key] :as opts}]
+(defmethod ig/init-key :scoopmarket.module/uport [_ {:keys [app-name client-id network signing-key] :as opts}]
   (let [Connect (aget js/window "uportconnect" "Connect")
         SimpleSigner (aget js/window "uportconnect" "SimpleSigner")]
     (Connect. app-name
@@ -23,4 +23,4 @@
                         :network network
                         :signer (SimpleSigner signing-key)}))))
 
-(defmethod ig/halt-key! :scoopmarket.module.uport [_ _])
+(defmethod ig/halt-key! :scoopmarket.module/uport [_ _])

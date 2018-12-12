@@ -7,6 +7,7 @@
                  [reagent "0.8.0"]
                  [re-frame "0.10.5"]
                  [integrant "0.6.3"]
+                 [org.clojure/data.json "0.2.6"]
                  [cljsjs/buffer "5.1.0-1"]
                  [cljsjs/ipfs-api "18.1.1-0"]
                  [cljsjs/moment "2.22.0-0"]
@@ -35,7 +36,8 @@
                                  [day8.re-frame/re-frame-10x "0.3.3"]
                                  [day8.re-frame/tracing "0.5.1"]
                                  [figwheel-sidecar "0.5.16"]
-                                 [cider/piggieback "0.3.5"]]
+                                 [cider/piggieback "0.3.5"]
+                                 [meta-merge "1.0.0"]]
                   :resource-paths ["dev/resources" "build"]
                   :plugins      [[lein-figwheel "0.5.16"]
                                  [lein-doo "0.1.8"]
@@ -43,9 +45,9 @@
   :cljsbuild
   {:builds
    [{:id "dev"
-     :source-paths ["src"]
-     :figwheel     {:on-jsload "scoopmarket.core/reset"}
-     :compiler     {:main                 scoopmarket.core
+     :source-paths ["src" "dev/src"]
+     :figwheel     {:on-jsload            cljs.user/reset}
+     :compiler     {:main                 cljs.user
                     :output-to            "resources/public/js/compiled/app.js"
                     :output-dir           "resources/public/js/compiled/out"
                     :asset-path           "js/compiled/out"
