@@ -17,33 +17,29 @@ So You need to connect test net by MetaMask, uPort or web3 enabled mobile browse
 
 ## How to set it up on local environment
 
-0. You need to install following commands.
+### 0. You need to install following commands.
 
 * truffle
 * ganache-cli
 * node/npm
+* leiningen
 
-1. Open terminal and run ganache-cli.
+### 1. Open terminal and run ganache-cli.
 
 ```sh
 ganache-cli -i 1533140371286
 ```
 
-2. Open other terminal window and run following commands.
+### 2. Open other terminal window and run following commands.
 
 ```sh
 npm install
 truffle migrate
-npm start
 ```
 
-3. Open http://localhost:3000/ in browser.
-
-## Development
+### 3. Start figwheel
 
 This is a [re-frame](https://github.com/Day8/re-frame) application.
-
-### Development Mode
 
 #### Start Cider from Emacs:
 
@@ -82,13 +78,8 @@ The above command assumes that you have [phantomjs](https://www.npmjs.com/packag
 To compile clojurescript to javascript:
 
 ```
+truffle migrate --network=rinkeby
 lein do clean, build
-```
-
-### Deploy to heroku
-
-```
-./deploy_heroku.sh
 ```
 
 ### Deploy to IPFS
@@ -102,5 +93,6 @@ ipfs daemon
 Then deploy.
 
 ```
+truffle migrate --network=rinkeby
 ./deploy_ipfs.sh
 ```
